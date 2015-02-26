@@ -183,7 +183,7 @@ inline void getChild(float *chns1, uint32 *cids, uint32 *fids, float *thrs, uint
   k0=k+=k0*2; k+=offset;
 }
 
-BB_Array* Detector::generateCandidatesFaster(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, double *maxHeight, float BBwidth2heightRatio, 
+BB_Array* Detector::generateCandidatesFaster(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, double *maxHeight, float BBwidth2heightRatio, 
 							cv::Mat &im_debug, float meanHeight/* = 1.7m*/, float stdHeight/* = 0.1m*/, float factorStdHeight/* = 2.0*/) 
 {
 
@@ -199,12 +199,6 @@ BB_Array* Detector::generateCandidatesFaster(int imageHeight, int imageWidth, in
 
 	BB_Array *candidates = new BB_Array();
 	double max_h = 0;
-
-	// assemble the third line of the inverse of the homography
-	cv::Mat_<float> H(3, 3, 0.0);
-	H(0,0) = P(0,0); H(1,0) = P(1,0); H(2,0) = P(2,0);
-	H(0,1) = P(0,1); H(1,1) = P(1,1); H(2,1) = P(2,1);
-	H(0,2) = P(0,3); H(1,2) = P(1,3); H(2,2) = P(2,3);
 	
 	cv::Mat_<float> H_inv = H.inv();
 
@@ -704,7 +698,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  			{
 	 			double maxHeight = 0; 
 				// should we use modelDs or modelHt/modelWd?
-				bbox_candidates = generateCandidatesFaster(image.rows, image.cols, 4, *(config.projectionMatrix), &maxHeight, (float)opts.modelDs[1]/opts.modelDs[0], I);
+				bbox_candidates = generateCandidatesFaster(image.rows, image.cols, 4, *(config.projectionMatrix), *(config.homographyMatrix), &maxHeight, (float)opts.modelDs[1]/opts.modelDs[0], I);
 				generateCandidatesDone = true;
 			}
 
@@ -712,7 +706,8 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 			std::vector<float*> scales_chns(opts.pPyramid.computedScales, NULL);
 			int imageHeights[opts.pPyramid.computedScales];
 			int imageWidths[opts.pPyramid.computedScales];
-			for (int i=0; i < opts.pPyramid.computedScales; i++) {
+			for (int i=0; i < opts.pPyramid.computedScales; i++) 
+			{
 				imageHeights[i] = framePyramid[i].image.rows;
 				imageWidths[i] = framePyramid[i].image.cols;
 

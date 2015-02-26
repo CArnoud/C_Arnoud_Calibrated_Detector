@@ -613,22 +613,7 @@ cv::Mat padImage(cv::Mat source, int channels, int *pad, int padSize, int type)
 	double val = (double)type;
 
 	imPad(I, O, source.rows, source.cols, channels, padTop, padBottom, padLeft, padRight, type, val);
-
-  /*
-  // old conversion
-  float* tempdata = (float*)malloc(newRows*newCols*channels*sizeof(float));
-  floatArray2cvData(O, tempdata, newRows, newCols, channels);
-  int matType = CV_32FC1;
-  if (channels == 3)
-    matType = CV_32FC3;
-  cv::Mat tempMat(newRows, newCols, matType);
-  tempMat.data = (uchar*)tempdata;
-  tempMat.copyTo(result);
-  tempMat.release();
-  free(tempdata);
-  // old conversion */
-
-  // improved conversion
+  
   result = floatArray2cvMat(O, newRows, newCols, channels);
 
   free(I);

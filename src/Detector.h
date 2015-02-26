@@ -72,7 +72,7 @@ private:
 	BB_Array *generateCandidates(int imageHeight, int imageWidth, float groundPlaneMinX, float groundPlaneMaxX, float groundPlaneMinY, float groundPlaneMaxY, 
 		cv::Mat_<float> &P, double *maxHeight, float meanHeight = 1800, float stdHeight = 100, float factorStdHeight = 2.0);
 
-	BB_Array* generateCandidatesFaster(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, double *maxHeight, float BBwidth2heightRatio,
+	BB_Array* generateCandidatesFaster(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, double *maxHeight, float BBwidth2heightRatio,
 							cv::Mat &im_debug, float meanHeight = 1800, float stdHeight = 100, float factorStdHeight = 2.0);
 
 	int findClosestScaleFromBbox(BoundingBox &bb, int modelHeight, int imageHeight);

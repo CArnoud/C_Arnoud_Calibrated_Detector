@@ -6,15 +6,16 @@
 class BoundingBox
 {
 public:
-	cv::Point    topLeftPoint;
+	BoundingBox();
+	BoundingBox(int topLeftPointX, int topLeftPointY, int w, int h, int s, float wHeight);
 	cv::Point2i  get_bottomRightPoint();
 
-
-	int height;
+	cv::Point topLeftPoint;
 	int width;
-	float score;
+	int height;
 	int scale;
-	float world_height;
+	float worldHeight;
+	float score;
 
 	void plot (cv::Mat &frame, cv::Scalar color);
 	std::string toString (int frameIndex);

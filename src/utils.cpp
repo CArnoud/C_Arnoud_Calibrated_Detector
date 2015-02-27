@@ -1003,7 +1003,7 @@ BoundingBox wcoord2bbox(cv::Point2f w_point, cv::Mat_<float> &P, float w_height,
   bb.topLeftPoint.y = i_head_point(1);
   bb.width          = i_width;
   bb.height         = i_height;
-  bb.world_height   = w_height;
+  bb.worldHeight   = w_height;
 
   return bb;
 }

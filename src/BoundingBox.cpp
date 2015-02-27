@@ -1,5 +1,29 @@
 #include "BoundingBox.h"
 
+// empty constructor
+BoundingBox::BoundingBox()
+{
+	topLeftPoint.x = -1;
+	topLeftPoint.y = -1;
+	width = 0;
+	height = 0;
+	scale = -1;
+	worldHeight = 0.0;
+	score = -1.0;
+}
+
+BoundingBox::BoundingBox(int topLeftPointX, int topLeftPointY, int w, int h, int s, float wHeight)
+{
+	topLeftPoint.x = topLeftPointX;
+	topLeftPoint.y = topLeftPointY;
+	width = w;
+	height = h;
+	scale = s;
+	worldHeight = wHeight;
+	score = 0;
+}
+
+
 void BoundingBox::plot (cv::Mat &frame, cv::Scalar color)
 {
 	cv::Point br;

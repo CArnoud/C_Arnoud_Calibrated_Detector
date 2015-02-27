@@ -4,7 +4,7 @@ double gaussianFunction(double mean, double std, double x) {
 	return exp(-pow(x-mean, 2)/(2*pow(std,2)));
 }
 
-OddConfig::OddConfig(std::string config_file) :
+Config::Config(std::string config_file) :
 	resizeImage(1.0),
 	firstFrame(0),
 	lastFrame(999999),
@@ -183,6 +183,88 @@ inline void getChild(float *chns1, uint32 *cids, uint32 *fids, float *thrs, uint
   k0=k+=k0*2; k+=offset;
 }
 
+BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, float minPedestrianHeight, float maxPedestrianHeight, int imageWidth, 
+											int imageHeight, cv::Mat_<float> &P, cv::Mat_<float> &H) 
+{
+	int u;
+	int v = modelHeight;
+	int vStep;
+	BB_Array *candidates = new BB_Array();
+
+	while (v < imageHeight)
+	{
+		int sumBBHeights = 0;
+		int boundingBoxesOnRow=0;
+		u=0;
+
+		while (u < imageWidth-modelWidth)
+		{
+			int head_v = 0;
+			int uStep;
+			double bbWorldHeight = findWorldHeight(u, v, head_v, P, H);
+
+			while (head_v < v-modelHeight && bbWorldHeight > maxPedestrianHeight)
+			{
+				head_v++;
+				bbWorldHeight = findWorldHeight(u, v, head_v, P, H);
+			}
+
+			if (bbWorldHeight <= maxPedestrianHeight)
+			{
+				// found the biggest valid bounding box in the point
+				int bbHeight = v-head_v;
+				int bbWidth = bbHeight*(modelWidth/modelHeight);
+				int bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
+				BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+				candidates->push_back(maxCandidate);
+
+				sumBBHeights = sumBBHeights + bbHeight;
+				boundingBoxesOnRow++;
+
+				// we step half the bounding box width to the right
+				uStep = floor(maxCandidate.width/2);
+
+				// now, find other valid bounding boxes
+				while (bbWorldHeight > minPedestrianHeight)
+				{
+					head_v++;
+					bbWorldHeight = findWorldHeight(u, v, head_v, P, H);
+
+					if (bbWorldHeight >= minPedestrianHeight)
+					{
+						bbHeight = v-head_v;
+						bbWidth = bbHeight*(modelWidth/modelHeight);
+						bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
+						BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+						candidates->push_back(newCandidate);
+
+						sumBBHeights = sumBBHeights + bbHeight;
+						boundingBoxesOnRow++;
+					}
+				}
+
+			}
+
+			if (uStep == 0)
+				uStep = floor(modelWidth/2);
+			u = u + uStep;
+		}
+
+		// if we found at least one bounding box in the row we step half the average bounding box height down
+		if (boundingBoxesOnRow > 0)
+			vStep = floor(sumBBHeights/boundingBoxesOnRow);
+		else
+			vStep = floor(modelHeight/2);
+
+		v = v + vStep;
+	}
+
+	// debug
+	std::cout << "Found " << candidates->size() << " candidates using generateSparseCandidates\n";
+
+	return candidates;
+}
+
 BB_Array* Detector::generateCandidatesFaster(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, double *maxHeight, float BBwidth2heightRatio, 
 							cv::Mat &im_debug, float meanHeight/* = 1.7m*/, float stdHeight/* = 0.1m*/, float factorStdHeight/* = 2.0*/) 
 {
@@ -227,14 +309,14 @@ BB_Array* Detector::generateCandidatesFaster(int imageHeight, int imageWidth, in
 				    bb.topLeftPoint.y = head_v;
 				    bb.width          = i_width;
 				    bb.height         = i_height;
-				    bb.world_height   = wHeight;
+				    bb.worldHeight   = wHeight;
 
 				    if (bb.topLeftPoint.x >= 0 && bb.topLeftPoint.x+bb.width < imageWidth && 
 						    bb.topLeftPoint.y >= 0 && bb.topLeftPoint.y+bb.height < imageHeight &&
 						    bb.height >= minImageHeight) {
 						if (bb.height > max_h) 
 							max_h = bb.height;
-						bb.scale = findClosestScaleFromBbox(bb, minImageHeight, imageHeight);
+						bb.scale = findClosestScaleFromBbox(bb.height, imageHeight);
 						candidates->push_back(bb);
 					}
 				}
@@ -320,7 +402,7 @@ float groundPlaneMaxY, cv::Mat_<float> &P, double *maxHeight, float meanHeight/*
 
 
 // This function returns the scale in which the pyramid will be better fitted
-int Detector::findClosestScaleFromBbox(BoundingBox &bb, int modelHeight, int imageHeight)
+int Detector::findClosestScaleFromBbox(int bbHeight, int imageHeight)
 {
 	// actually here is the size of the the image that changes, the model stays the same
 	// to see the best fit for the bounding box, one must find the relation between the original
@@ -330,7 +412,7 @@ int Detector::findClosestScaleFromBbox(BoundingBox &bb, int modelHeight, int ima
 
 	for (int i = 0; i < opts.pPyramid.computedScales; i++) 
 	{
-		float diff = fabs(opts.modelDs[0]/opts.pPyramid.scales[i] - bb.height);
+		float diff = fabs(opts.modelDs[0]/opts.pPyramid.scales[i] - bbHeight);
 
 		if (diff < min_dist) {
 			i_min = i;
@@ -444,7 +526,7 @@ BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array* bbox_candidates, std
 	    	max_h = h;
 	    }
 
-	    double hf = h*gaussianFunction(1800, 300, (*bbox_candidates)[i].world_height);
+	    double hf = h*gaussianFunction(1800, 300, (*bbox_candidates)[i].worldHeight);
 	    //if(hf>config.classifierThreshold){
 	    if(hf>1.0){
 			// std::cout << h << std::endl;
@@ -699,6 +781,8 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 	 			double maxHeight = 0; 
 				// should we use modelDs or modelHt/modelWd?
 				bbox_candidates = generateCandidatesFaster(image.rows, image.cols, 4, *(config.projectionMatrix), *(config.homographyMatrix), &maxHeight, (float)opts.modelDs[1]/opts.modelDs[0], I);
+				//bbox_candidates = generateSparseCandidates(opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,config.maxPedestrianWorldHeight, image.cols, image.rows, *(config.projectionMatrix), *(config.homographyMatrix));
+
 				generateCandidatesDone = true;
 			}
 
@@ -933,7 +1017,7 @@ BB_Array Detector::nonMaximalSuppressionSmart(BB_Array bbs, double meanHeight, d
 	// 		result.push_back(bbs[i]);
 
 	for (int i=0; i < bbs.size(); ++i) {
-		bbs[i].score = bbs[i].score*gaussianFunction(meanHeight, stdHeight, bbs[i].world_height);
+		bbs[i].score = bbs[i].score*gaussianFunction(meanHeight, stdHeight, bbs[i].worldHeight);
 		if (bbs[i].score > config.supressionThreshold)
 			result.push_back(bbs[i]);
 	}

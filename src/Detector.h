@@ -9,7 +9,7 @@
 #include <string>
 
 
-struct OddConfig {
+struct Config {
 	float resizeImage;
 	std::string detectorFileName;
 	std::string dataSetDirectory;
@@ -29,7 +29,7 @@ struct OddConfig {
 	float maxPedestrianWorldHeight;
 	float minPedestrianWorldHeight; 
 
-	OddConfig(std::string config_file);
+	Config(std::string config_file);
 };
 
 
@@ -48,7 +48,7 @@ public:
 	cv::Mat errs;
 	cv::Mat losses;
 	int treeDepth;
-	OddConfig config;
+	Config config;
 
 	//BB_Array_Array detections;
 
@@ -61,7 +61,7 @@ public:
 	void acfDetect(std::vector<std::string> imageNames, std::string dataSetDirectoryName, int firstFrame, int lastFrame);
 	BB_Array nonMaximalSuppression(BB_Array bbs);
 
-	Detector(OddConfig _config): config(_config) { };
+	Detector(Config _config): config(_config) { };
 
 private:
 	BoundingBox pyramidRowColumn2BoundingBox(int r, int c,  int modelHt, int modelWd, int ith_scale, int stride);
@@ -72,10 +72,13 @@ private:
 	BB_Array *generateCandidates(int imageHeight, int imageWidth, float groundPlaneMinX, float groundPlaneMaxX, float groundPlaneMinY, float groundPlaneMaxY, 
 		cv::Mat_<float> &P, double *maxHeight, float meanHeight = 1800, float stdHeight = 100, float factorStdHeight = 2.0);
 
+	BB_Array* generateSparseCandidates(int modelWidth, int modelHeight, float minPedestrianHeight, float maxPedestrianHeight, int imageWidth, 
+											int imageHeight, cv::Mat_<float> &P, cv::Mat_<float> &H);
+
 	BB_Array* generateCandidatesFaster(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, double *maxHeight, float BBwidth2heightRatio,
 							cv::Mat &im_debug, float meanHeight = 1800, float stdHeight = 100, float factorStdHeight = 2.0);
 
-	int findClosestScaleFromBbox(BoundingBox &bb, int modelHeight, int imageHeight);
+	int findClosestScaleFromBbox(int bbHeight, int imageHeight);
 
 	int findClosestScaleFromBbox2(std::vector<Info> &pyramid, BoundingBox &bb,
 												int modelHeight, double shrink);

@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 	{
 		clock_t start = clock();
 		
-		OddConfig settings(argv[1]);
+		Config settings(argv[1]);
 		Detector d(settings);
 
 		// loads all detector settings from the provided xml file

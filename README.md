@@ -9,20 +9,22 @@ Created by Charles Arnoud, under the mentorship of Cláudio Rosito Jüng and wit
 Current Status  
 ======================  
   
-Detection working, but is slower than in the original version (implementation problem).   
-Calibrated detection and feature pyramid online, new candidate generation method under way.  
+Detection working, found out why the program was not optimized. 
+Now it is faster than the original Matlab version, although results seem to be slightly worse.   
+Calibrated detection and feature pyramid online, new candidate generation method is a work in progress.  
   
   
 To Do List:  
 ======================  
   
-Current Total: 4    
+Current Total: 5    
   
 C_Arnoud_Calibrated_Detector.cpp:  
-&nbsp;&nbsp;&nbsp;&nbsp;find out why the program is so slow!  
+&nbsp;&nbsp;&nbsp;&nbsp;create config file and test the TownCentre data set  
   
 Calibrated Detection:  
 &nbsp;&nbsp;&nbsp;&nbsp;Possibly add a way to use background information  
 &nbsp;&nbsp;&nbsp;&nbsp;Remove magic numbers on calibrated detector and suppression  
-&nbsp;&nbsp;&nbsp;&nbsp;Create a new getCandidates function   
+&nbsp;&nbsp;&nbsp;&nbsp;finish the new generate candidates function  
+&nbsp;&nbsp;&nbsp;&nbsp;make a function that generates candidates around the detections to reapply the classifier  
       

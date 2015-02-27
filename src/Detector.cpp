@@ -213,16 +213,13 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 			{
 				// found the biggest valid bounding box in the point
 				int bbHeight = v-head_v;
-				int bbWidth = bbHeight*(modelWidth/modelHeight);
+				int bbWidth = bbHeight*modelWidth/modelHeight;
 				int bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
 				BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
 				candidates->push_back(maxCandidate);
 
 				sumBBHeights = sumBBHeights + bbHeight;
 				boundingBoxesOnRow++;
-
-				// we step half the bounding box width to the right
-				uStep = floor(maxCandidate.width/2);
 
 				// now, find other valid bounding boxes
 				while (bbWorldHeight > minPedestrianHeight)
@@ -233,7 +230,7 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 					if (bbWorldHeight >= minPedestrianHeight)
 					{
 						bbHeight = v-head_v;
-						bbWidth = bbHeight*(modelWidth/modelHeight);
+						bbWidth = bbHeight*modelWidth/modelHeight;
 						bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
 						BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
 						candidates->push_back(newCandidate);
@@ -243,6 +240,8 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 					}
 				}
 
+				// we step half the smallest valid bounding box width to the right
+				uStep = floor(bbWidth/2);
 			}
 
 			if (uStep == 0)
@@ -251,10 +250,10 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 		}
 
 		// if we found at least one bounding box in the row we step half the average bounding box height down
-		if (boundingBoxesOnRow > 0)
-			vStep = floor(sumBBHeights/boundingBoxesOnRow);
-		else
-			vStep = floor(modelHeight/2);
+		//if (boundingBoxesOnRow > 0)
+		//	vStep = floor(sumBBHeights/boundingBoxesOnRow);
+		//else
+		vStep = floor(modelHeight/2);
 
 		v = v + vStep;
 	}
@@ -780,8 +779,14 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  			{
 	 			double maxHeight = 0; 
 				// should we use modelDs or modelHt/modelWd?
-				bbox_candidates = generateCandidatesFaster(image.rows, image.cols, 4, *(config.projectionMatrix), *(config.homographyMatrix), &maxHeight, (float)opts.modelDs[1]/opts.modelDs[0], I);
-				//bbox_candidates = generateSparseCandidates(opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,config.maxPedestrianWorldHeight, image.cols, image.rows, *(config.projectionMatrix), *(config.homographyMatrix));
+				//bbox_candidates = generateCandidatesFaster(image.rows, image.cols, 4, *(config.projectionMatrix), *(config.homographyMatrix), &maxHeight, (float)opts.modelDs[1]/opts.modelDs[0], I);
+				bbox_candidates = generateSparseCandidates(opts.modelDs[1], opts.modelDs[0], config.minPedestrianWorldHeight,config.maxPedestrianWorldHeight, image.cols, image.rows, *(config.projectionMatrix), *(config.homographyMatrix));
+
+				/*
+				// debug
+				showDetections(I, (*bbox_candidates), "candidates");
+				cv::waitKey();
+				// debug */
 
 				generateCandidatesDone = true;
 			}

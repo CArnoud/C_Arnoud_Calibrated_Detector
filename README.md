@@ -17,7 +17,7 @@ Calibrated detection and feature pyramid online, new candidate generation method
 To Do List:  
 ======================  
   
-Current Total: 5    
+Current Total: 4    
   
 C_Arnoud_Calibrated_Detector.cpp:  
 &nbsp;&nbsp;&nbsp;&nbsp;create config file and test the TownCentre data set  
@@ -25,6 +25,5 @@ C_Arnoud_Calibrated_Detector.cpp:
 Calibrated Detection:  
 &nbsp;&nbsp;&nbsp;&nbsp;Possibly add a way to use background information  
 &nbsp;&nbsp;&nbsp;&nbsp;Remove magic numbers on calibrated detector and suppression  
-&nbsp;&nbsp;&nbsp;&nbsp;finish the new generate candidates function  
 &nbsp;&nbsp;&nbsp;&nbsp;make a function that generates candidates around the detections to reapply the classifier  
       

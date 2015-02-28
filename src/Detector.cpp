@@ -185,6 +185,133 @@ inline void getChild(float *chns1, uint32 *cids, uint32 *fids, float *thrs, uint
   k0=k+=k0*2; k+=offset;
 }
 
+BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeight, int imageWidth, int modelHeight, int modelWidth, float minPedestrianHeight, 
+											float maxPedestrianHeight, cv::Mat_<float> &P, cv::Mat_<float> &H)
+{
+	BB_Array* result = new BB_Array();
+	BB_Array tempResult;
+
+	// sort the candidates by score
+	BB_Array sortedCandidates(candidates->size());
+	for (int i=0; i < candidates->size(); i++)
+	{
+		sortedCandidates[i] = (*candidates)[i];
+	} 
+	std::sort(sortedCandidates.begin(), sortedCandidates.begin()+sortedCandidates.size());
+
+	// keeps only the biggest bounding box of each region (could be relocated to the classifier)
+	for (int i = 0; i < candidates->size(); ++i)
+	{
+		bool discard = false;
+		int j=0;
+		while (j < tempResult.size() && !discard)
+		{
+			if (sortedCandidates[i].topLeftPoint.x >= tempResult[j].topLeftPoint.x-tempResult[j].width &&
+				sortedCandidates[i].topLeftPoint.x <= tempResult[j].topLeftPoint.x+tempResult[j].width &&
+				sortedCandidates[i].topLeftPoint.y >= tempResult[j].topLeftPoint.y-(tempResult[j].height/2) &&
+				sortedCandidates[i].topLeftPoint.y <= tempResult[j].topLeftPoint.y+(tempResult[j].height/2)) 
+			{
+				discard = true;
+
+				if (sortedCandidates[i].height > tempResult[j].height)
+				{
+					tempResult[j].height = sortedCandidates[i].height;
+				}
+
+				if (sortedCandidates[i].width > tempResult[j].width)
+				{
+					tempResult[j].width = sortedCandidates[i].width;
+				}
+			}
+
+			j++;
+		}
+
+		if (!discard)
+		{
+			tempResult.push_back(sortedCandidates[i]);
+		}
+	}
+
+	std::cout << tempResult.size() << " regions to be created\n";
+
+	// here, we need to create the regions around the remaining bounding boxes
+	for (int i=0; i < tempResult.size(); i++)
+	{
+		std::cout << "basePoint: (" << tempResult[i].topLeftPoint.x << "," << tempResult[i].topLeftPoint.y << "), height=" <<
+		tempResult[i].height << ", width=" << tempResult[i].width << std::endl;
+
+		int v = tempResult[i].topLeftPoint.y + (tempResult[i].height/2);
+		int maxV = tempResult[i].topLeftPoint.y + (3*tempResult[i].height/2);
+		if (maxV > imageHeight)
+			maxV = imageHeight;
+
+		bool foo=false;
+
+		while (v < maxV)
+		{
+			int u = tempResult[i].topLeftPoint.x - tempResult[i].width;
+			int maxU = tempResult[i].topLeftPoint.x + tempResult[i].width;
+			if (u < 0)
+				u = 0;
+			if (maxU > imageWidth)
+				maxU = imageWidth;
+
+			if (!foo)
+			{
+				std::cout << "minV=" << v << ", maxV=" << maxV << ", minU=" << u << ", maxU=" << maxU << std::endl;
+				foo = true;
+			}
+
+			while (u < maxU)
+			{
+				// we start at the top of the region
+				int head_v = tempResult[i].topLeftPoint.y - (tempResult[i].height/2); 
+				
+				double bbWorldHeight = findWorldHeight(u, v, head_v, P, H);
+				while (head_v < v-modelHeight && bbWorldHeight > maxPedestrianHeight)
+				{
+					head_v++;
+					bbWorldHeight = findWorldHeight(u, v, head_v, P, H);
+				}
+
+				if (bbWorldHeight <= maxPedestrianHeight)
+				{
+					// found the biggest valid bounding box in the point
+					int bbHeight = v-head_v;
+					int bbWidth = bbHeight*modelWidth/modelHeight;
+					int bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
+					BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+					result->push_back(maxCandidate);
+
+					// now, find other valid bounding boxes
+					while (bbWorldHeight > minPedestrianHeight && head_v < v-modelHeight)
+					{
+						head_v++;
+						bbWorldHeight = findWorldHeight(u, v, head_v, P, H);
+
+						if (bbWorldHeight >= minPedestrianHeight)
+						{
+							bbHeight = v-head_v;
+							bbWidth = bbHeight*modelWidth/modelHeight;
+							bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
+							BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+							result->push_back(newCandidate);
+						}
+					}
+				}
+				u++;
+			}
+			v++;
+		}
+
+		std::cout << result->size() << " candidates created so far.\n";
+		std::cin.get();
+	}
+
+	return result;
+} 
+
 BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, float minPedestrianHeight, float maxPedestrianHeight, int imageWidth, 
 											int imageHeight, cv::Mat_<float> &P, cv::Mat_<float> &H) 
 {
@@ -224,7 +351,7 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 				boundingBoxesOnRow++;
 
 				// now, find other valid bounding boxes
-				while (bbWorldHeight > minPedestrianHeight)
+				while (bbWorldHeight > minPedestrianHeight && head_v < v-modelHeight)
 				{
 					head_v++;
 					bbWorldHeight = findWorldHeight(u, v, head_v, P, H);
@@ -259,9 +386,6 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 
 		v = v + vStep;
 	}
-
-	// debug
-	std::cout << "Found " << candidates->size() << " candidates using generateSparseCandidates\n";
 
 	return candidates;
 }
@@ -709,7 +833,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 				if (config.candidateGeneration == FULL)
 					bbox_candidates = generateCandidates(image.rows, image.cols, 4, *(config.projectionMatrix), *(config.homographyMatrix), (float)opts.modelDs[1]/opts.modelDs[0]);
 				else
-					bbox_candidates = generateSparseCandidates(opts.modelDs[1], opts.modelDs[0], config.minPedestrianWorldHeight,config.maxPedestrianWorldHeight, image.cols, image.rows, *(config.projectionMatrix), *(config.homographyMatrix));
+					bbox_candidates = generateSparseCandidates(opts.modelDs[1], opts.modelDs[0], config.minPedestrianWorldHeight, config.maxPedestrianWorldHeight, image.cols, image.rows, *(config.projectionMatrix), *(config.homographyMatrix));
 
 				// std::cout << (*bbox_candidates).size() << " candidates generated\n";
 
@@ -741,6 +865,20 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  			frameDetections = applyCalibratedDetectorToFrame(bbox_candidates, scales_chns, imageHeights, imageWidths, shrink, modelHt, modelWd, stride, cascThr, 
  							thrs, hs, scales_cids, fids, child, nTreeNodes, nTrees, treeDepth, nChns, image.cols, image.rows, *(config.projectionMatrix), image);
 		
+ 			if (config.candidateGeneration == SPARSE)
+ 			{
+ 				BB_Array *newCandidates = generateCandidateRegions(&frameDetections, image.rows, image.cols, opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,
+ 				 													config.maxPedestrianWorldHeight, *(config.projectionMatrix), *(config.homographyMatrix));
+
+ 				std::cout << (*newCandidates).size() << " candidates generated\n";
+
+				
+				// debug: shows the 
+				showDetections(I, (*newCandidates), "candidates");
+				cv::waitKey();
+				// debug */
+ 			}
+
 			// free the memory used to pre-allocate indexes
 			for (int i=0; i < opts.pPyramid.computedScales; i++) 
 				free(scales_chns[i]);

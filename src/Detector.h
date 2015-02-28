@@ -8,18 +8,18 @@
 #include <fstream>
 #include <string>
 
+enum candidateType { SPARSE, FULL };
 
-struct Config {
+struct Config 
+{
 	float resizeImage;
 	std::string detectorFileName;
 	std::string dataSetDirectory;
 	int firstFrame, lastFrame;
 
-	bool displayDetections, saveFrames, saveLog, saveDetectionsInText; 
+	bool displayDetections, saveFrames, saveDetectionsInText, useCalibration; 
 	std::string outputFolder;
-	std::string logFilename;
-
-	bool useCalibration;
+	int candidateGeneration;
 
 	cv::Mat_<float> *projectionMatrix;
 	cv::Mat_<float> *homographyMatrix;
@@ -66,17 +66,11 @@ public:
 private:
 	BoundingBox pyramidRowColumn2BoundingBox(int r, int c,  int modelHt, int modelWd, int ith_scale, int stride);
 
-	//BB_Array *generateCandidates(int imageHeight, int imageWidth, cv::Mat_<float> &P, double *maxHeight, float meanHeight = 1800, float stdHeight= 100, 
-	//float factorStdHeight = 2.0, float groundPlaneMinX, float groundPlaneMaxX, float groundPlaneMinY, float groundPlaneMaxY) ;
-
-	BB_Array *generateCandidates(int imageHeight, int imageWidth, float groundPlaneMinX, float groundPlaneMaxX, float groundPlaneMinY, float groundPlaneMaxY, 
-		cv::Mat_<float> &P, double *maxHeight, float meanHeight = 1800, float stdHeight = 100, float factorStdHeight = 2.0);
-
 	BB_Array* generateSparseCandidates(int modelWidth, int modelHeight, float minPedestrianHeight, float maxPedestrianHeight, int imageWidth, 
 											int imageHeight, cv::Mat_<float> &P, cv::Mat_<float> &H);
 
-	BB_Array* generateCandidatesFaster(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, double *maxHeight, float BBwidth2heightRatio,
-							cv::Mat &im_debug, float meanHeight = 1800, float stdHeight = 100, float factorStdHeight = 2.0);
+	BB_Array* generateCandidates(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, float BBwidth2heightRatio, 
+									float meanHeight = 1800, float stdHeight = 100, float factorStdHeight = 2.0);
 
 	int findClosestScaleFromBbox(int bbHeight, int imageHeight);
 

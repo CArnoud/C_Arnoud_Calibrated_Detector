@@ -10,7 +10,6 @@ Config::Config(std::string config_file) :
 	lastFrame(999999),
 	displayDetections(false),
 	saveFrames(false),
-	saveLog(false),
 	useCalibration(false),
 	saveDetectionsInText(false),
 	supressionThreshold(0.0),
@@ -29,6 +28,15 @@ Config::Config(std::string config_file) :
 			else if (token == "lastFrame") in_file >> lastFrame;
 			else if (token == "detectorFileName") in_file >> detectorFileName;
 			else if (token == "dataSetDirectory") in_file >> dataSetDirectory;
+			else if (token == "candidateGeneration") 
+			{
+				std::string candidateGenerationString;
+				in_file >> candidateGenerationString;
+				if (candidateGenerationString == "full")
+					candidateGeneration = FULL;
+				else
+					candidateGeneration = SPARSE;
+			}
 			else if (token == "displayDetections") {
 				std::string sbool;
 				in_file >> sbool;
@@ -45,12 +53,6 @@ Config::Config(std::string config_file) :
 				saveDetectionsInText = (sbool == "true");
 			}
 			else if (token == "outputFolder") in_file >> outputFolder;
-			else if (token == "saveLog") {
-				std::string sbool;
-				in_file >> sbool;
-				saveLog = (sbool == "true");
-			}
-			else if (token == "logFilename") in_file >> logFilename;
 			else if (token == "supressionThreshold") in_file >> supressionThreshold;
 			else if (token == "maxPedestrianWorldHeight") in_file >> maxPedestrianWorldHeight;
 			else if (token == "minPedestrianWorldHeight") in_file >> minPedestrianWorldHeight;
@@ -240,12 +242,12 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 					}
 				}
 
-				// we step half the smallest valid bounding box width to the right
-				uStep = floor(bbWidth/2);
+				// whould we step half the smallest valid bounding box width to the right or use the smallest possible bounding box?
+				// uStep = floor(bbWidth/2);
 			}
 
-			if (uStep == 0)
-				uStep = floor(modelWidth/2);
+			//if (uStep == 0)
+			uStep = floor(modelWidth/2);
 			u = u + uStep;
 		}
 
@@ -264,8 +266,8 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 	return candidates;
 }
 
-BB_Array* Detector::generateCandidatesFaster(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, double *maxHeight, float BBwidth2heightRatio, 
-							cv::Mat &im_debug, float meanHeight/* = 1.7m*/, float stdHeight/* = 0.1m*/, float factorStdHeight/* = 2.0*/) 
+BB_Array* Detector::generateCandidates(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, float BBwidth2heightRatio, 
+										float meanHeight/* = 1.7m*/, float stdHeight/* = 0.1m*/, float factorStdHeight/* = 2.0*/) 
 {
 
 	// there is a set of parameters here that are hard coded, but should
@@ -325,80 +327,9 @@ BB_Array* Detector::generateCandidatesFaster(int imageHeight, int imageWidth, in
 			}
 		}
 	}
-	
-	
-	//std::cout << "Total candidates: " << totalCandidates << ", imageHeight: " << imageHeight << ", imageWidth: " << imageWidth << std::endl;
  
-	*maxHeight = max_h;
-
 	return candidates;
 }
-
-BB_Array* Detector::generateCandidates(int imageHeight, int imageWidth, float groundPlaneMinX, float groundPlaneMaxX, float groundPlaneMinY, 
-float groundPlaneMaxY, cv::Mat_<float> &P, double *maxHeight, float meanHeight/* = 1.8m*/, float stdHeight/* = 0.1m*/, float factorStdHeight/* = 2.0*/) 
-{
-	// before calling this function, we should use findGroundPlaneAndImageIntersectionPoints to find these parameters
-	cv::Mat_<float> area(2,2);
-	area(0,0) = groundPlaneMinX;
-	area(0,1) = groundPlaneMaxX;
-	area(1,0) = groundPlaneMinY;
-	area(1,1) = groundPlaneMaxY;
-
-	float step = 200;
-	float aspectRatio = 0.41; // same as model
-
-	float stepHeight = 100;
-
-	float minImageHeight = 80;
-
-	int totalCandidates = 0;
-
-	BB_Array *candidates = new BB_Array();
-	double max_h = 0;
-	for (float x = area(0,0); x < area(0,1); x += step) 
-	{
-		for (float y = area(1,0); y < area(1,1); y += step) 
-		{
-			// for all points in the ground plane (according to the area), I try all
-			// the heights that I need to
-
-			for (float h = -stdHeight * factorStdHeight; h <= stdHeight * factorStdHeight; h+= stepHeight) 
-			{
-				cv::Mat_<float> w_feet_point(4, 1, 0.0);
-			    w_feet_point(0) = x;
-			    w_feet_point(1) = y;
-			    w_feet_point(2) = 0.0;
-			    w_feet_point(3) = 1.0;
-				cv::Mat_<float> i_feet_point = world2image(w_feet_point, P);
-
-				if (i_feet_point(0) >= 0 && i_feet_point(0) < imageWidth &&
-					i_feet_point(1) >= 0 && i_feet_point(1) < imageHeight) {
-				float wHeight = meanHeight + h;
-
-				cv::Point2f wPoint(x, y);
-				BoundingBox bb = wcoord2bbox(wPoint, P, wHeight, aspectRatio);
-
-				// only put if it is inside the visible image
-				if (bb.topLeftPoint.x >= 0 && bb.topLeftPoint.x+bb.width < imageWidth && 
-					    bb.topLeftPoint.y >= 0 && bb.topLeftPoint.y+bb.height < imageHeight &&
-					    bb.height >= minImageHeight) {
-					if (bb.height > max_h) 
-						max_h = bb.height;
-					candidates->push_back(bb);
-				}
-				totalCandidates++;
-				}
-			}
-			
-		}
-	}
-
-	//std::cout << "Total candidates: " << totalCandidates << std::endl;
-	*maxHeight = max_h;
-
-	return candidates;
-}
-
 
 // This function returns the scale in which the pyramid will be better fitted
 int Detector::findClosestScaleFromBbox(int bbHeight, int imageHeight)
@@ -695,7 +626,6 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 	bool cidsDone = false;
 
 	std::ofstream txtFile;
-
 	if (config.saveDetectionsInText)
 	{
 		std::string outputfilename = config.outputFolder + "/detections.txt"; 
@@ -728,13 +658,11 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		//image.convertTo(I, CV_32FC3, 1.0/255.0);
 		cv::normalize(image, I, 0.0, 1.0, cv::NORM_MINMAX, CV_32FC3);
 
-		// compute feature pyramid
 		std::vector<Info> framePyramid;
-		clock_t detectionStart;
-
 		BB_Array frameDetections;
+		clock_t detectionStart;
 		
-		if (config.useCalibration)
+		if (config.useCalibration) // decides if we use the calibrated detector or just the Dóllar detection
 		{
 			// the decision of which scales are necessary is taken only on the first frame, since we assume the same camera for the whole data set
 			if (!calibratedGetScalesDone)
@@ -767,10 +695,8 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 				        	}
 				        }
 				    }
-
 				    scales_cids.push_back(cids);
 				}
-
 				cidsDone = true;
 			}
 
@@ -778,12 +704,17 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  			if (!generateCandidatesDone)
  			{
 	 			double maxHeight = 0; 
+
 				// should we use modelDs or modelHt/modelWd?
-				//bbox_candidates = generateCandidatesFaster(image.rows, image.cols, 4, *(config.projectionMatrix), *(config.homographyMatrix), &maxHeight, (float)opts.modelDs[1]/opts.modelDs[0], I);
-				bbox_candidates = generateSparseCandidates(opts.modelDs[1], opts.modelDs[0], config.minPedestrianWorldHeight,config.maxPedestrianWorldHeight, image.cols, image.rows, *(config.projectionMatrix), *(config.homographyMatrix));
+				if (config.candidateGeneration == FULL)
+					bbox_candidates = generateCandidates(image.rows, image.cols, 4, *(config.projectionMatrix), *(config.homographyMatrix), (float)opts.modelDs[1]/opts.modelDs[0]);
+				else
+					bbox_candidates = generateSparseCandidates(opts.modelDs[1], opts.modelDs[0], config.minPedestrianWorldHeight,config.maxPedestrianWorldHeight, image.cols, image.rows, *(config.projectionMatrix), *(config.homographyMatrix));
+
+				// std::cout << (*bbox_candidates).size() << " candidates generated\n";
 
 				/*
-				// debug
+				// debug: shows the 
 				showDetections(I, (*bbox_candidates), "candidates");
 				cv::waitKey();
 				// debug */
@@ -816,16 +747,21 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		}
 		else
 		{
+			// computes the feature pyramid for the current frame
 			framePyramid = opts.pPyramid.computeFeaturePyramid(I, config.useCalibration);
 			
+			// starts counting the time spent in detection for the current frame
 			detectionStart = clock();
+
+			// aplies classifier to all image patches
 			frameDetections = applyDetectorToFrame(framePyramid, shrink, modelHt, modelWd, stride, cascThr, thrs, hs, fids, child, nTreeNodes, nTrees, treeDepth, nChns);		
 		}
 		
-		//detections.push_back(frameDetections);
+		// saves the detections
 		detections[i] = frameDetections;
 		frameDetections.clear(); //doesn't seem to make a difference
 
+		// finalizes the detection clock and adds the time spent to the total detection time
 		clock_t detectionEnd = clock();
 		timeSpentInDetection = timeSpentInDetection + (double(detectionEnd - detectionStart) / CLOCKS_PER_SEC);
 
@@ -836,7 +772,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		cv::waitKey();
 		// debug */
 
-
+		// decides which type of non-maximal suppression is used
 		if (config.useCalibration)
 			detections[i] = nonMaximalSuppressionSmart(detections[i], 1800, 100);
 		else
@@ -847,7 +783,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		{
 			showDetections(I, detections[i], "detections after suppression");
 			//printDetections(detections[i], i);
-			cv::waitKey(30);
+			cv::waitKey(500);
 		}		
 		
 		// saves image with embedded detections
@@ -876,9 +812,9 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		I.release();
 		// experimental */
 
+		// prints the total time spent working in the current frame
 		clock_t frameEnd = clock();
 		double elapsed_secs = double(frameEnd - frameStart) / CLOCKS_PER_SEC;
-
 		std::cout << "Frame " << i+1 << " of " << lastFrame << " was processed in " << elapsed_secs << " seconds.\n"; 
 	}
 

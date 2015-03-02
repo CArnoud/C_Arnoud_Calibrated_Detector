@@ -66,7 +66,7 @@ public:
 private:
 	BoundingBox pyramidRowColumn2BoundingBox(int r, int c,  int modelHt, int modelWd, int ith_scale, int stride);
 
-	BB_Array* generateCandidateRegions(BB_Array* candidates, int imageHeight, int imageWidth, int modelHeight, int modelWidth, float minPedestrianHeight, 
+	BB_Array* generateCandidateRegions(BB_Array* candidates, int imageHeight, int imageWidth, int shrink, int modelHeight, int modelWidth, float minPedestrianHeight, 
 											float maxPedestrianHeight, cv::Mat_<float> &P, cv::Mat_<float> &H);
 
 	BB_Array* generateSparseCandidates(int modelWidth, int modelHeight, float minPedestrianHeight, float maxPedestrianHeight, int imageWidth, 

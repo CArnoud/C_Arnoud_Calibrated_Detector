@@ -185,8 +185,8 @@ inline void getChild(float *chns1, uint32 *cids, uint32 *fids, float *thrs, uint
   k0=k+=k0*2; k+=offset;
 }
 
-BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeight, int imageWidth, int modelHeight, int modelWidth, float minPedestrianHeight, 
-											float maxPedestrianHeight, cv::Mat_<float> &P, cv::Mat_<float> &H)
+BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeight, int imageWidth, int shrink, int modelHeight, int modelWidth, 
+											float minPedestrianHeight, float maxPedestrianHeight, cv::Mat_<float> &P, cv::Mat_<float> &H)
 {
 	BB_Array* result = new BB_Array();
 	BB_Array tempResult;
@@ -233,13 +233,13 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 		}
 	}
 
-	std::cout << tempResult.size() << " regions to be created\n";
+	//std::cout << tempResult.size() << " regions to be created\n";
 
 	// here, we need to create the regions around the remaining bounding boxes
 	for (int i=0; i < tempResult.size(); i++)
 	{
-		std::cout << "basePoint: (" << tempResult[i].topLeftPoint.x << "," << tempResult[i].topLeftPoint.y << "), height=" <<
-		tempResult[i].height << ", width=" << tempResult[i].width << std::endl;
+		//std::cout << "basePoint: (" << tempResult[i].topLeftPoint.x << "," << tempResult[i].topLeftPoint.y << "), height=" <<
+		//tempResult[i].height << ", width=" << tempResult[i].width << std::endl;
 
 		int v = tempResult[i].topLeftPoint.y + (tempResult[i].height/2);
 		int maxV = tempResult[i].topLeftPoint.y + (3*tempResult[i].height/2);
@@ -254,14 +254,16 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 			int maxU = tempResult[i].topLeftPoint.x + tempResult[i].width;
 			if (u < 0)
 				u = 0;
-			if (maxU > imageWidth)
-				maxU = imageWidth;
+			if (maxU > imageWidth-modelWidth)
+				maxU = imageWidth-modelWidth;
 
+			/*
 			if (!foo)
 			{
 				std::cout << "minV=" << v << ", maxV=" << maxV << ", minU=" << u << ", maxU=" << maxU << std::endl;
 				foo = true;
 			}
+			*/
 
 			while (u < maxU)
 			{
@@ -284,6 +286,8 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 					BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
 					result->push_back(maxCandidate);
 
+					int previousScale = -1;
+
 					// now, find other valid bounding boxes
 					while (bbWorldHeight > minPedestrianHeight && head_v < v-modelHeight)
 					{
@@ -293,20 +297,28 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 						if (bbWorldHeight >= minPedestrianHeight)
 						{
 							bbHeight = v-head_v;
-							bbWidth = bbHeight*modelWidth/modelHeight;
 							bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
-							BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
-							result->push_back(newCandidate);
+
+							if (bbScale != previousScale)
+							{
+								previousScale = bbScale;
+
+								bbWidth = bbHeight*modelWidth/modelHeight;
+								BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+								result->push_back(newCandidate);
+							}
 						}
 					}
 				}
-				u++;
+				u = u + shrink;
 			}
 			v++;
 		}
 
+		/*
 		std::cout << result->size() << " candidates created so far.\n";
 		std::cin.get();
+		*/
 	}
 
 	return result;
@@ -323,7 +335,7 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 	while (v < imageHeight)
 	{
 		int sumBBHeights = 0;
-		int boundingBoxesOnRow=0;
+		//int boundingBoxesOnRow=0;
 		u=0;
 
 		while (u < imageWidth-modelWidth)
@@ -348,7 +360,7 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 				candidates->push_back(maxCandidate);
 
 				sumBBHeights = sumBBHeights + bbHeight;
-				boundingBoxesOnRow++;
+				//boundingBoxesOnRow++;
 
 				// now, find other valid bounding boxes
 				while (bbWorldHeight > minPedestrianHeight && head_v < v-modelHeight)
@@ -365,7 +377,7 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 						candidates->push_back(newCandidate);
 
 						sumBBHeights = sumBBHeights + bbHeight;
-						boundingBoxesOnRow++;
+						//boundingBoxesOnRow++;
 					}
 				}
 
@@ -517,9 +529,10 @@ BoundingBox Detector::pyramidRowColumn2BoundingBox(int r, int c,  int modelHt, i
 	return bb;
 }
 
-BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array* bbox_candidates, std::vector<float*> scales_chns, int *imageHeigths, int *imageWidths, int shrink, int modelHt, int modelWd, int stride, 
-											float cascThr, float *thrs, float *hs, std::vector<uint32*> scales_cids, uint32 *fids, uint32 *child, int nTreeNodes, 
-											int nTrees, int treeDepth, int nChns, int imageWidth, int imageHeight, cv::Mat_<float> &P, cv::Mat &debug_image)
+BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array* bbox_candidates, std::vector<float*> scales_chns, int *imageHeigths, int *imageWidths, int shrink, 
+											int modelHt, int modelWd, int stride, float cascThr, float *thrs, float *hs, std::vector<uint32*> scales_cids, 
+											uint32 *fids, uint32 *child, int nTreeNodes, int nTrees, int treeDepth, int nChns, int imageWidth, int imageHeight, 
+											cv::Mat_<float> &P, cv::Mat &debug_image)
 {
 	BB_Array result;
 
@@ -629,7 +642,6 @@ BB_Array Detector::applyDetectorToFrame(std::vector<Info> pyramid, int shrink, i
 	    	for( int c=0; c<modelWd/shrink; c++ ) {
 	      		for( int r=0; r<modelHt/shrink; r++ ) {
 	        		cids[m++] = z*width*height + c*height + r;
-	        		// std::cout << "cids[m] " << cids[m-1] << std::endl;
 	        	}
 	        }
 	    }
@@ -760,13 +772,13 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 	if (imageNames.size() <= lastFrame)
 		numberOfFrames = imageNames.size()-firstFrame;
 	else
-		numberOfFrames = lastFrame-firstFrame;
+		numberOfFrames = lastFrame-firstFrame+1;
 	BB_Array_Array detections(numberOfFrames);
 
 	BB_Array *bbox_candidates;
 	std::vector<uint32*> scales_cids;
 
-	for (int i = firstFrame; i < numberOfFrames; i++)
+	for (int i = firstFrame; i < firstFrame + numberOfFrames; i++)
 	{
 		clock_t frameStart = clock();
 
@@ -791,7 +803,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 			// the decision of which scales are necessary is taken only on the first frame, since we assume the same camera for the whole data set
 			if (!calibratedGetScalesDone)
 			{
-				opts.pPyramid.calibratedGetScales(I.rows, I.cols, opts.pPyramid.pChns.shrink, modelWd, modelHt, config.maxPedestrianWorldHeight, *(config.projectionMatrix), *(config.homographyMatrix));
+				opts.pPyramid.calibratedGetScales(I.rows, I.cols, shrink, modelWd, modelHt, config.maxPedestrianWorldHeight, *(config.projectionMatrix), *(config.homographyMatrix));
 				calibratedGetScalesDone = true;
 			}
 			
@@ -831,14 +843,14 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 
 				// should we use modelDs or modelHt/modelWd?
 				if (config.candidateGeneration == FULL)
-					bbox_candidates = generateCandidates(image.rows, image.cols, 4, *(config.projectionMatrix), *(config.homographyMatrix), (float)opts.modelDs[1]/opts.modelDs[0]);
+					bbox_candidates = generateCandidates(image.rows, image.cols, shrink, *(config.projectionMatrix), *(config.homographyMatrix), (float)opts.modelDs[1]/opts.modelDs[0]);
 				else
 					bbox_candidates = generateSparseCandidates(opts.modelDs[1], opts.modelDs[0], config.minPedestrianWorldHeight, config.maxPedestrianWorldHeight, image.cols, image.rows, *(config.projectionMatrix), *(config.homographyMatrix));
 
-				// std::cout << (*bbox_candidates).size() << " candidates generated\n";
+				//std::cout << (*bbox_candidates).size() << " candidates generated on first step\n";
 
 				/*
-				// debug: shows the 
+				// debug: shows the candidates
 				showDetections(I, (*bbox_candidates), "candidates");
 				cv::waitKey();
 				// debug */
@@ -867,16 +879,25 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		
  			if (config.candidateGeneration == SPARSE)
  			{
- 				BB_Array *newCandidates = generateCandidateRegions(&frameDetections, image.rows, image.cols, opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,
+ 				clock_t candidateStart = clock();
+
+ 				BB_Array *newCandidates = generateCandidateRegions(&frameDetections, image.rows, image.cols, shrink, opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,
  				 													config.maxPedestrianWorldHeight, *(config.projectionMatrix), *(config.homographyMatrix));
+ 				clock_t candidateEnd = clock();
 
- 				std::cout << (*newCandidates).size() << " candidates generated\n";
 
-				
-				// debug: shows the 
+ 				//std::cout << newCandidates->size() << " candidates generated in " << (double(candidateEnd - candidateStart) / CLOCKS_PER_SEC) << " seconds\n"; 
+ 				
+ 				/*
+				// debug: shows the candidate regions
 				showDetections(I, (*newCandidates), "candidates");
 				cv::waitKey();
 				// debug */
+
+ 				frameDetections.clear();
+
+ 				frameDetections = applyCalibratedDetectorToFrame(newCandidates, scales_chns, imageHeights, imageWidths, shrink, modelHt, modelWd, stride, cascThr, 
+ 							thrs, hs, scales_cids, fids, child, nTreeNodes, nTrees, treeDepth, nChns, image.cols, image.rows, *(config.projectionMatrix), image);
  			}
 
 			// free the memory used to pre-allocate indexes
@@ -896,7 +917,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		}
 		
 		// saves the detections
-		detections[i] = frameDetections;
+		detections[i-firstFrame] = frameDetections;
 		frameDetections.clear(); //doesn't seem to make a difference
 
 		// finalizes the detection clock and adds the time spent to the total detection time
@@ -912,22 +933,22 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 
 		// decides which type of non-maximal suppression is used
 		if (config.useCalibration)
-			detections[i] = nonMaximalSuppressionSmart(detections[i], 1800, 100);
+			detections[i-firstFrame] = nonMaximalSuppressionSmart(detections[i-firstFrame], 1800, 100);
 		else
-			detections[i] = nonMaximalSuppression(detections[i]);
+			detections[i-firstFrame] = nonMaximalSuppression(detections[i-firstFrame]);
 		
 		// shows detections after suppression
 		if (config.displayDetections)
 		{
-			showDetections(I, detections[i], "detections after suppression");
+			showDetections(I, detections[i-firstFrame], "detections after suppression");
 			//printDetections(detections[i], i);
 			cv::waitKey(500);
 		}		
 		
 		// saves image with embedded detections
 		if (config.saveFrames) {
-			for (int j = 0; j<detections[i].size(); j++) 
-				detections[i][j].plot(image, cv::Scalar(0,255,0));
+			for (int j = 0; j<detections[i-firstFrame].size(); j++) 
+				detections[i-firstFrame][j].plot(image, cv::Scalar(0,255,0));
 
 			std::string outputfilename = config.outputFolder + '/' + imageNames[i];
 			cv::imwrite(outputfilename, image);
@@ -935,8 +956,8 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 
 		if (config.saveDetectionsInText)
 		{
-  			for (int j = 0; j < detections[i].size(); j++)
-  				txtFile << detections[i][j].toString(i);
+  			for (int j = 0; j < detections[i-firstFrame].size(); j++)
+  				txtFile << detections[i-firstFrame][j].toString(i);
 		}
 		
 		// experimental: do i need to clear these?
@@ -953,7 +974,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		// prints the total time spent working in the current frame
 		clock_t frameEnd = clock();
 		double elapsed_secs = double(frameEnd - frameStart) / CLOCKS_PER_SEC;
-		std::cout << "Frame " << i+1 << " of " << lastFrame << " was processed in " << elapsed_secs << " seconds.\n"; 
+		std::cout << "Frame " << i-firstFrame+1 << " of " << numberOfFrames << " was processed in " << elapsed_secs << " seconds.\n"; 
 	}
 
 	if (config.useCalibration)

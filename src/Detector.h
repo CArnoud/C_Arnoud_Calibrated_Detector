@@ -87,9 +87,7 @@ private:
 	void bbTopLeft2PyramidRowColumn(int *r, int *c, BoundingBox &bb, int modelHt, int modelWd, int ith_scale, int stride);
 	BB_Array nonMaximalSuppressionSmart(BB_Array bbs, double meanHeight, double stdHeight);
 
-	std::vector<int> bestScaleIndex;
-	std::vector<int> boundingBoxTopPoints;
-
+	BB_Array candidateRegions;
 };
 
 #endif

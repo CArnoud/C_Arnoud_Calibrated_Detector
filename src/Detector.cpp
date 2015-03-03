@@ -233,38 +233,40 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 		}
 	}
 
-	//std::cout << tempResult.size() << " regions to be created\n";
+	/*
+	// std::cout << tempResult.size() << " regions to be created\n";
+	cv::Mat image = cv::imread("/home/c_arnoud/datasets/View_001/frame_0730.jpg");
+	cv::resize(image, image, cv::Size(), 1.5, 1.5);
+	showDetections(image, tempResult, "region source");
+	*/
 
 	// here, we need to create the regions around the remaining bounding boxes
 	for (int i=0; i < tempResult.size(); i++)
 	{
-		//std::cout << "basePoint: (" << tempResult[i].topLeftPoint.x << "," << tempResult[i].topLeftPoint.y << "), height=" <<
-		//tempResult[i].height << ", width=" << tempResult[i].width << std::endl;
-
 		int v = tempResult[i].topLeftPoint.y + (tempResult[i].height/2);
 		int maxV = tempResult[i].topLeftPoint.y + (3*tempResult[i].height/2);
 		if (maxV > imageHeight)
 			maxV = imageHeight;
 
-		bool foo=false;
+		int maxU = tempResult[i].topLeftPoint.x + tempResult[i].width;
+		if (maxU > imageWidth-modelWidth)
+			maxU = imageWidth-modelWidth;
+
+		int regionU = tempResult[i].topLeftPoint.x - tempResult[i].width;
+		if (regionU < 0)
+			regionU = 0;
+		// correct version
+		 BoundingBox region(regionU, v, maxU-regionU, maxV-v);
+		// test version
+		//BoundingBox region(regionU, tempResult[i].topLeftPoint.y-(tempResult[i].height/2), maxU-regionU+tempResult[i].width, maxV-(tempResult[i].topLeftPoint.y-(tempResult[i].height/2)));
+		candidateRegions.push_back(region);
 
 		while (v < maxV)
 		{
 			int u = tempResult[i].topLeftPoint.x - tempResult[i].width;
-			int maxU = tempResult[i].topLeftPoint.x + tempResult[i].width;
 			if (u < 0)
 				u = 0;
-			if (maxU > imageWidth-modelWidth)
-				maxU = imageWidth-modelWidth;
-
-			/*
-			if (!foo)
-			{
-				std::cout << "minV=" << v << ", maxV=" << maxV << ", minU=" << u << ", maxU=" << maxU << std::endl;
-				foo = true;
-			}
-			*/
-
+			
 			while (u < maxU)
 			{
 				// we start at the top of the region
@@ -282,9 +284,14 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 					// found the biggest valid bounding box in the point
 					int bbHeight = v-head_v;
 					int bbWidth = bbHeight*modelWidth/modelHeight;
-					int bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
-					BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
-					result->push_back(maxCandidate);
+					int bbScale; 
+
+					if (u + bbWidth <= imageWidth)
+					{
+						bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
+						BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+						result->push_back(maxCandidate);
+					}
 
 					int previousScale = -1;
 
@@ -304,8 +311,12 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 								previousScale = bbScale;
 
 								bbWidth = bbHeight*modelWidth/modelHeight;
-								BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
-								result->push_back(newCandidate);
+
+								if (u + bbWidth <= imageWidth)
+								{
+									BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+									result->push_back(newCandidate);
+								}
 							}
 						}
 					}
@@ -355,11 +366,16 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 				// found the biggest valid bounding box in the point
 				int bbHeight = v-head_v;
 				int bbWidth = bbHeight*modelWidth/modelHeight;
-				int bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
-				BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
-				candidates->push_back(maxCandidate);
+				int bbScale;
 
-				sumBBHeights = sumBBHeights + bbHeight;
+				if (u + bbWidth <= imageWidth)
+				{
+					bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
+					BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+					candidates->push_back(maxCandidate);
+					sumBBHeights = sumBBHeights + bbHeight;
+				}
+				
 				//boundingBoxesOnRow++;
 
 				// now, find other valid bounding boxes
@@ -372,11 +388,14 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 					{
 						bbHeight = v-head_v;
 						bbWidth = bbHeight*modelWidth/modelHeight;
-						bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
-						BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
-						candidates->push_back(newCandidate);
 
-						sumBBHeights = sumBBHeights + bbHeight;
+						if (u + bbWidth <= imageWidth)
+						{
+							bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
+							BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+							candidates->push_back(newCandidate);
+							sumBBHeights = sumBBHeights + bbHeight;
+						}
 						//boundingBoxesOnRow++;
 					}
 				}
@@ -402,6 +421,7 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 	return candidates;
 }
 
+// candidate generation done by Gustavo Führ
 BB_Array* Detector::generateCandidates(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, float BBwidth2heightRatio, 
 										float meanHeight/* = 1.7m*/, float stdHeight/* = 0.1m*/, float factorStdHeight/* = 2.0*/) 
 {
@@ -613,6 +633,7 @@ BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array* bbox_candidates, std
 	return result;
 }
 
+// copies the Dóllar detection
 BB_Array Detector::applyDetectorToFrame(std::vector<Info> pyramid, int shrink, int modelHt, int modelWd, int stride, float cascThr, float *thrs, float *hs, 
 										uint32 *fids, uint32 *child, int nTreeNodes, int nTrees, int treeDepth, int nChns)
 {
@@ -760,6 +781,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 	bool calibratedGetScalesDone = false;
 	bool generateCandidatesDone = false;
 	bool cidsDone = false;
+	bool candidateRegionsDone = false;
 
 	std::ofstream txtFile;
 	if (config.saveDetectionsInText)
@@ -879,12 +901,20 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		
  			if (config.candidateGeneration == SPARSE)
  			{
- 				clock_t candidateStart = clock();
+				clock_t candidateStart = clock();
 
- 				BB_Array *newCandidates = generateCandidateRegions(&frameDetections, image.rows, image.cols, shrink, opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,
- 				 													config.maxPedestrianWorldHeight, *(config.projectionMatrix), *(config.homographyMatrix));
- 				clock_t candidateEnd = clock();
+				// if (candidateRegions.size() == 0)
+				BB_Array *newCandidates = generateCandidateRegions(&frameDetections, image.rows, image.cols, shrink, opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,
+			 													config.maxPedestrianWorldHeight, *(config.projectionMatrix), *(config.homographyMatrix));
+				// else
+				// addCandidateRegions() 
+				clock_t candidateEnd = clock();
 
+				/*
+				std::cout << "number of regions:" << candidateRegions.size() << std::endl;
+				showDetections(image, candidateRegions, "candidate regions");
+				cv::waitKey();
+				*/
 
  				//std::cout << newCandidates->size() << " candidates generated in " << (double(candidateEnd - candidateStart) / CLOCKS_PER_SEC) << " seconds\n"; 
  				
@@ -898,6 +928,8 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 
  				frameDetections = applyCalibratedDetectorToFrame(newCandidates, scales_chns, imageHeights, imageWidths, shrink, modelHt, modelWd, stride, cascThr, 
  							thrs, hs, scales_cids, fids, child, nTreeNodes, nTrees, treeDepth, nChns, image.cols, image.rows, *(config.projectionMatrix), image);
+ 				
+ 				// removeCandidateRegions()
  			}
 
 			// free the memory used to pre-allocate indexes

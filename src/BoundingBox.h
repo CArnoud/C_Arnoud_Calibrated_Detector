@@ -7,6 +7,7 @@ class BoundingBox
 {
 public:
 	BoundingBox();
+	BoundingBox(int topLeftPointX, int topLeftPointY, int w, int h);
 	BoundingBox(int topLeftPointX, int topLeftPointY, int w, int h, int s, float wHeight);
 	cv::Point2i  get_bottomRightPoint();
 

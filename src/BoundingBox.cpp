@@ -12,6 +12,17 @@ BoundingBox::BoundingBox()
 	score = -1.0;
 }
 
+BoundingBox::BoundingBox(int topLeftPointX, int topLeftPointY, int w, int h)
+{
+	topLeftPoint.x = topLeftPointX;
+	topLeftPoint.y = topLeftPointY;
+	width = w;
+	height = h;
+	scale = -1;
+	worldHeight = 0.0;
+	score = -1.0;
+}
+
 BoundingBox::BoundingBox(int topLeftPointX, int topLeftPointY, int w, int h, int s, float wHeight)
 {
 	topLeftPoint.x = topLeftPointX;

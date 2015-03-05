@@ -194,7 +194,9 @@ BB_Array* Detector::addCandidateRegions(BB_Array* candidates, int imageHeight, i
 	BB_Array* result = new BB_Array();
 	BB_Array sparseDetections;
 
-	for (int i = 0; i < candidates->size(); ++i)
+	//std::cout << "\ntesting " << candidates->size() << " detections\n";
+
+	for (int i = 0; i < candidates->size(); i++)
 	{
 		bool covered = false;
 		int j=0;
@@ -237,18 +239,33 @@ BB_Array* Detector::addCandidateRegions(BB_Array* candidates, int imageHeight, i
 			}
 
 			if (!discarded)
+			{
 				sparseDetections.push_back((*candidates)[i]);
+			}
 		}
 	}
+
+	//std::cout << sparseDetections.size() << " candidates passed the first test\n";
+
+	/*
+	if (sparseDetections.size() > 0)
+		result->reserve(5000*sparseDetections.size());
+	// */
 
 	for (int i=0; i < sparseDetections.size(); i++)
 	{
 		int j=0;
-		bool covered;
+		bool covered = false;
 
+		// is this test necessary?
 		while (!covered && j < sparseDetections.size())
 		{
 			covered=isBBinsideRegion(candidateRegions[j], sparseDetections[i].topLeftPoint.x, sparseDetections[i].topLeftPoint.y+sparseDetections[i].height); 		
+
+			/*
+			if (covered)
+				std::cout << "candidate[" << i << "] is covered by region[" << j << "]\n";
+			*/
 
 			j++;
 		}
@@ -271,7 +288,7 @@ BB_Array* Detector::addCandidateRegions(BB_Array* candidates, int imageHeight, i
 			BoundingBox region(regionU, v, maxU-regionU, maxV-v);
 			candidateRegions.push_back(region);
 
-			std::cout << "one region added\n"; 
+			//std::cout << "one region added\n"; 
 
 			while (v < maxV)
 			{
@@ -349,6 +366,11 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 	BB_Array* result = new BB_Array();
 	BB_Array tempResult;
 
+	/*
+	result->reserve(10000);
+	tempResult.reserve(10000);
+	*/
+
 	// sort the candidates by score
 	BB_Array sortedCandidates(candidates->size());
 	for (int i=0; i < candidates->size(); i++)
@@ -388,6 +410,10 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 
 		if (!discard)
 		{
+			/*
+			if (tempResult.size() >= tempResult.capacity())
+				tempResult.reserve(5000);
+			*/
 			tempResult.push_back(sortedCandidates[i]);
 		}
 	}
@@ -449,6 +475,12 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 					{
 						bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
 						BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+
+						/*
+						if (result->size() >= result->capacity())
+							result->reserve(10000);
+						// */
+
 						result->push_back(maxCandidate);
 					}
 
@@ -474,6 +506,12 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 								if (u + bbWidth <= imageWidth)
 								{
 									BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+
+									/*
+									if (result->size() >= result->capacity())
+										result->reserve(10000);									
+									// */
+
 									result->push_back(newCandidate);
 								}
 							}
@@ -501,6 +539,7 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 	int v = modelHeight;
 	int vStep;
 	BB_Array *candidates = new BB_Array();
+	//candidates->reserve(30000);
 
 	while (v < imageHeight)
 	{
@@ -531,6 +570,13 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 				{
 					bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
 					BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+
+					/*
+					if (candidates->size() >= candidates->capacity())
+					{
+						candidates->reserve(10000);
+					}
+					// */
 					candidates->push_back(maxCandidate);
 					sumBBHeights = sumBBHeights + bbHeight;
 				}
@@ -552,6 +598,15 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 						{
 							bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
 							BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
+
+							/*
+							// is this helping?
+							if (candidates->size() >= candidates->capacity())
+							{
+								candidates->reserve(10000);
+							}
+							// */
+
 							candidates->push_back(newCandidate);
 							sumBBHeights = sumBBHeights + bbHeight;
 						}
@@ -559,7 +614,7 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 					}
 				}
 
-				// whould we step half the smallest valid bounding box width to the right or use the smallest possible bounding box?
+				// should we step half the smallest valid bounding box width to the right or use the smallest possible bounding box?
 				// uStep = floor(bbWidth/2);
 			}
 
@@ -1030,12 +1085,12 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 				else
 					bbox_candidates = generateSparseCandidates(opts.modelDs[1], opts.modelDs[0], config.minPedestrianWorldHeight, config.maxPedestrianWorldHeight, image.cols, image.rows, *(config.projectionMatrix), *(config.homographyMatrix));
 
-				//std::cout << (*bbox_candidates).size() << " candidates generated on first step\n";
+				std::cout << (*bbox_candidates).size() << " candidates generated on first step\n";
 
-				/*
+				
 				// debug: shows the candidates
-				showDetections(I, (*bbox_candidates), "candidates");
-				cv::waitKey();
+				//showDetections(I, (*bbox_candidates), "candidates");
+				//cv::waitKey();
 				// debug */
 
 				generateCandidatesDone = true;
@@ -1064,15 +1119,26 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  			{
 				clock_t candidateStart = clock();
 
-				//if (candidateRegions.size() == 0)
-				denseCandidates = generateCandidateRegions(&frameDetections, image.rows, image.cols, shrink, opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,
+				if (candidateRegions.size() == 0)
+					denseCandidates = generateCandidateRegions(&frameDetections, image.rows, image.cols, shrink, opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,
 			 													config.maxPedestrianWorldHeight, *(config.projectionMatrix), *(config.homographyMatrix));
-				/*
+				
 				else
 				{
+					/*
+					showDetections(image, frameDetections, "sparse detections");
+					showDetections(image, candidateRegions, "regions before");
+					*/
 					BB_Array *newCandidates =  addCandidateRegions(&frameDetections, image.rows, image.cols, opts.modelDs[0], opts.modelDs[1],
 												config.minPedestrianWorldHeight, config.maxPedestrianWorldHeight, shrink, *(config.projectionMatrix), *(config.homographyMatrix));
-					denseCandidates->insert(denseCandidates->end(), newCandidates->begin(), newCandidates->end());
+					//std::cout << newCandidates->size() << " new candidates generated\n";
+					if (newCandidates->size() > 0)
+					{
+						denseCandidates->insert(denseCandidates->end(), newCandidates->begin(), newCandidates->end());
+						/*
+						showDetections(image, candidateRegions, "regions after");
+						cv::waitKey();*/
+					}
 				} // */
 				clock_t candidateEnd = clock();
 
@@ -1084,6 +1150,8 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 
  				//std::cout << denseCandidates->size() << " candidates generated in " << (double(candidateEnd - candidateStart) / CLOCKS_PER_SEC) << " seconds\n"; 
  				
+				//std::cout << std::endl << denseCandidates->size()+bbox_candidates->size() << " candidates analized this frame\n";
+
  				/*
 				// debug: shows the candidate regions
 				showDetections(I, (*denseCandidates), "candidates");

@@ -24,27 +24,6 @@ int main(int argc, char *argv[])
 		// gets names for all the files inside the data set folder
 		std::vector<std::string> imageNames = getDataSetFileNames(settings.dataSetDirectory);
 
-		/*
-		// debug: tests new functions
-		cv::Mat I = cv::imread(settings.dataSetDirectory + '/' + imageNames[0]);
-		cv::Mat image;
-		cv::normalize(I, image, 0.0, 1.0, cv::NORM_MINMAX, CV_32FC3);
-		cv::imshow("original", image);
-		float* floatImage = (float*) malloc(image.rows*image.cols*3*sizeof(float));
-		cvMat2floatArray(image, floatImage, 3);
-		cv::Mat convertedImage = floatArray2cvMat(floatImage, image.rows, image.cols, 3);
-		cv::imshow("converted", convertedImage);
-
-		cv::Mat gray_image;
- 		cv::cvtColor(image, gray_image, CV_BGR2GRAY );
- 		float* floatGray = (float*) malloc(image.rows*image.cols*sizeof(float));
-		cvMat2floatArray(gray_image, floatGray, 1);
-		cv::Mat convertedGray = floatArray2cvMat(floatGray, image.rows, image.cols, 1);
-		cv::imshow("convertedGray", convertedGray);
-		
-		cv::waitKey();
-		// debug */
-
 		if (settings.lastFrame <= settings.firstFrame)
 			settings.lastFrame = imageNames.size();
 		
@@ -53,7 +32,6 @@ int main(int argc, char *argv[])
 
 		clock_t end = clock();
 		double elapsed_secs = double(end - start) / CLOCKS_PER_SEC;
-
 		std::cout << "\nTotal processing time was " << elapsed_secs << " seconds.\n";
 		std::cout << "Time elapsed calculating features: " << d.opts.pPyramid.totalTimeForRealScales << std::endl;
 		std::cout << "Time elapsed approximating features: " << d.opts.pPyramid.totalTimeForApproxScales << std::endl;

@@ -23,7 +23,6 @@ enum suppressionTypeID { NONE, MAX, MAXG, MS, COVER };
 // matrix conversions
 void cvMat2floatArray(cv::Mat source, float* result, int channels);
 cv::Mat floatArray2cvMat(float* source, int rows, int cols, int channels);
-//void floatArray2cvData(float* source, float* result, int rows, int cols, int channels);
 void features2floatArray (Info features, float* result, int rows, int cols, int colorChannels, int magChannels, int histChannels);
 
 // Dóllar's allocation functions
@@ -33,7 +32,6 @@ void alFree(void* aligned);
 // image operations
 void convolution(float* source, float* result, int rows, int cols, int channels, int radius, int s);
 void resample(float *A, float *B, int ha, int hb, int wa, int wb, int d, float r );
-//float* rgbConvert(float *I, int n, int d, int flag, float nrm);
 void rgbConvert(float *I, float* J, int n, int d, int flag, float nrm);
 cv::Mat padImage(cv::Mat source, int channels, int *pad, int padSize, int type);
 
@@ -42,10 +40,10 @@ std::vector<std::string> getDataSetFileNames(std::string directory);
 cv::Point2f imagePoint2groundPlanePoint(float imageU, float imageV, float imageZ, cv::Mat homography);
 cv::Point worldPoint2imagePoint(float worldX, float worldY, float worldZ, cv::Mat homography);
 std::vector<cv::Point2f> findGroundPlaneAndImageIntersectionPoints(int imageWidth, int imageHeight, int boundingBoxImageWidth, int boundingBoxImageHeight, 
-  float maxPedestrianHeight, cv::Mat_<float> &projection, cv::Mat_<float> &homography);
+  																	float maxPedestrianHeight, cv::Mat_<float> &projection, cv::Mat_<float> &homography);
 double findWorldHeight(int u, int bottom_v, int top_v, cv::Mat_<float> &projection, cv::Mat_<float> &homography);
 std::vector<cv::Point2f> trimGroundPlanesBottomPoints(int imageWidth, int imageHeight, int boundingBoxImageWidth, int boundingBoxImageHeight, 
-  double targetPedestrianWorldHeight, std::vector<cv::Point2f> groundPlaneLimits, cv::Mat_<float> &projection, cv::Mat_<float> &homography);
+  					double targetPedestrianWorldHeight, std::vector<cv::Point2f> groundPlaneLimits, cv::Mat_<float> &projection, cv::Mat_<float> &homography);
 int findNecessaryNumberOfOctaves(int imageWidth, int imageHeight, int boundingBoxImageWidth, int boundingBoxImageHeight, 
   double minPedestrianWorldHeight, double maxPedestrianWorldHeight, cv::Mat_<float> &projection, cv::Mat_<float> &homography);
 double findLastNecessaryScaleInAPoint(int u, int v, int imageHeight, int boundingBoxImageHeight, double maxPedestrianWorldHeight, 

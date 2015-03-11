@@ -160,7 +160,7 @@ void Detector::importDetectorModel(cv::String fileName)
 	}
 }
 
-void showDetections(cv::Mat I, BB_Array detections, cv::String windowName)
+void Detector::showDetections(cv::Mat I, BB_Array detections, cv::String windowName)
 {
 	cv::Mat img = I.clone();
 	for (int j = 0; j<detections.size(); j++) 
@@ -1107,9 +1107,9 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 			}
 
 			// computes the feature pyramid for the current frame
-			framePyramid = opts.pPyramid.computeFeaturePyramid(I, config.useCalibration); 	
+			framePyramid = opts.pPyramid.computeFeaturePyramid(I, config.useCalibration); 
 
-			//std::cout << "after pyramide\n";
+			//std::cout << framePyramid->size() << " scales calculated/approximated\n";	
 
 			// starts counting the time spent in detection for the current frame
  			detectionStart = clock();
@@ -1148,10 +1148,11 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 				else
 					bbox_candidates = generateSparseCandidates(opts.modelDs[1], opts.modelDs[0], config.minPedestrianWorldHeight, config.maxPedestrianWorldHeight, image.cols, image.rows, *(config.projectionMatrix), *(config.homographyMatrix));
 
-				//std::cout << (*bbox_candidates).size() << " candidates generated on first step\n";
+				/*
 				// debug: shows the candidates
-				//showDetections(I, (*bbox_candidates), "candidates");
-				//cv::waitKey();
+				std::cout << (*bbox_candidates).size() << " candidates generated on first step\n";
+				showDetections(I, (*bbox_candidates), "candidates");
+				cv::waitKey();
 				// debug */
 
 				generateCandidatesDone = true;
@@ -1178,7 +1179,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  			frameDetections = applyCalibratedDetectorToFrame(bbox_candidates, scales_chns, imageHeights, imageWidths, shrink, modelHt, modelWd, stride, cascThr, 
  							thrs, hs, scales_cids, fids, child, nTreeNodes, nTrees, treeDepth, nChns, image.cols, image.rows, *(config.projectionMatrix));
 		
- 			//std::cout << "after first detection\n";
+ 			//std::cout << frameDetections.size() << " detections after first step\n";
 
  			if (config.candidateGeneration == SPARSE)
  			{

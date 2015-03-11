@@ -27,8 +27,30 @@ int main(int argc, char *argv[])
 		if (settings.firstFrame > imageNames.size())
 			settings.firstFrame = 0;
 
-		if (settings.lastFrame <= settings.firstFrame)
+		if (settings.lastFrame < settings.firstFrame)
 			settings.lastFrame = imageNames.size();
+
+		
+		cv::Mat image = cv::imread(settings.dataSetDirectory + '/' + imageNames[0]);
+		BoundingBox test(871, 400, 100, 218);
+		BoundingBox test2(0, 0, 41, 100);
+
+		/*
+		BB_Array testBoxes;
+		testBoxes.push_back(BoundingBox(871, 400, 100, 218));
+		testBoxes.push_back(BoundingBox(0, 0, 41, 100));
+		testBoxes.push_back(BoundingBox(1000, 0, 41, 100));
+		testBoxes.push_back(BoundingBox(1800, 0, 41, 100));
+		testBoxes.push_back(BoundingBox(0, 800, 41, 100));
+		for (int i=0; i < testBoxes.size(); i++)
+		{
+			testBoxes[i].plot(image, cv::Scalar(0,255,0));
+			double height = findWorldHeight(testBoxes[i].topLeftPoint.x, testBoxes[i].topLeftPoint.y+testBoxes[i].height, testBoxes[i].topLeftPoint.y, (*settings.projectionMatrix), (*settings.homographyMatrix));
+			std::cout << "BB" << i+1 << " World Height: " << height << std::endl;
+		}
+		imshow("test", image);
+		cv::waitKey();
+		// */
 		
 		// apply the detection on all images
 		d.acfDetect(imageNames, settings.dataSetDirectory, settings.firstFrame, settings.lastFrame);

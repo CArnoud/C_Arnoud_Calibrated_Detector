@@ -64,6 +64,8 @@ public:
 	Detector(Config _config): config(_config) { };
 
 private:
+	void showDetections(cv::Mat I, BB_Array detections, cv::String windowName);
+
 	BoundingBox pyramidRowColumn2BoundingBox(int r, int c,  int modelHt, int modelWd, int ith_scale, int stride);
 
 	void removeCandidateRegions(BB_Array detections, BB_Array *denseCandidates);

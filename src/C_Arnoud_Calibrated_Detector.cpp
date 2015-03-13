@@ -32,8 +32,6 @@ int main(int argc, char *argv[])
 
 		
 		cv::Mat image = cv::imread(settings.dataSetDirectory + '/' + imageNames[0]);
-		BoundingBox test(871, 400, 100, 218);
-		BoundingBox test2(0, 0, 41, 100);
 
 		/*
 		BB_Array testBoxes;
@@ -68,8 +66,8 @@ int main(int argc, char *argv[])
 		//std::cout << "after printing final times\n";
 		//std::cin.get();
 
-		//delete settings.projectionMatrix;
-		//delete settings.homographyMatrix;
+		delete settings.projectionMatrix;
+		delete settings.homographyMatrix;
 
 		return 0;
 	}

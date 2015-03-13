@@ -228,7 +228,7 @@ BB_Array* Detector::addCandidateRegions(BB_Array* candidates, int imageHeight, i
 	BB_Array* result = new BB_Array();
 	BB_Array sparseDetections;
 
-	//std::cout << "\ntesting " << candidates->size() << " detections\n";
+	//std::cout << "testing " << candidates->size() << " detections\n";
 
 	for (int i = 0; i < candidates->size(); i++)
 	{
@@ -390,6 +390,8 @@ BB_Array* Detector::addCandidateRegions(BB_Array* candidates, int imageHeight, i
 			}
 		}
 	}
+
+	//std::cout << "before addCandidateRegions return\n";
 
 	return result;
 }
@@ -881,14 +883,14 @@ BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array* bbox_candidates, std
 	      }
 	    }
 
-	    double hf = h*gaussianFunction(1800, 300, (*bbox_candidates)[i].worldHeight);
-	    //if(hf>config.classifierThreshold){
-	    if(hf>1.0){
+	    //double hf = h*gaussianFunction(1800, 300, (*bbox_candidates)[i].worldHeight);
+	    if(h>cascThr)
+	    {
 			// std::cout << h << std::endl;
 			// std::cout << "hey" << std::endl;
 			//cv::imshow("results", debug_image);
 			BoundingBox detection((*bbox_candidates)[i]);
-			detection.score = hf;
+			detection.score = h;
 			detection.scale = ith_scale;
 
 	    	result.push_back(detection);
@@ -1066,8 +1068,11 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 	BB_Array_Array detections(numberOfFrames);
 
 	BB_Array *bbox_candidates;
-	BB_Array *denseCandidates = new BB_Array();
+	BB_Array *denseCandidates;
 	std::vector<uint32*> scales_cids;
+
+	if (config.candidateGeneration == SPARSE)
+		denseCandidates = new BB_Array();
 
 	for (int i = firstFrame; i < firstFrame + numberOfFrames; i++)
 	{
@@ -1092,7 +1097,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		//image.convertTo(I, CV_32FC3, 1.0/255.0);
 		cv::normalize(image, I, 0.0, 1.0, cv::NORM_MINMAX, CV_32FC3);
 
-		std::vector<Info> *framePyramid;
+		std::vector<Info> framePyramid;
 		BB_Array frameDetections;
 		clock_t detectionStart;
 		
@@ -1109,7 +1114,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 			// computes the feature pyramid for the current frame
 			framePyramid = opts.pPyramid.computeFeaturePyramid(I, config.useCalibration); 
 
-			//std::cout << framePyramid->size() << " scales calculated/approximated\n";	
+			//std::cout << framePyramid.size() << " scales calculated/approximated\n";	
 
 			// starts counting the time spent in detection for the current frame
  			detectionStart = clock();
@@ -1120,8 +1125,8 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  				scales_cids.reserve(opts.pPyramid.computedScales);
 				for (int i=0; i < opts.pPyramid.computedScales; i++) 
 				{
-					int height = (*framePyramid)[i].image.rows;
-					int width = (*framePyramid)[i].image.cols;
+					int height = framePyramid[i].image.rows;
+					int width = framePyramid[i].image.cols;
 					int nFtrs = modelHt/shrink*modelWd/shrink*nChns;
 				  	uint32 *cids = new uint32[nFtrs]; int m=0;
 				  	
@@ -1133,6 +1138,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 				        }
 				    }
 				    scales_cids.push_back(cids);
+				    //delete cids; // causes segmentation fault
 				}
 				cidsDone = true;
 			}
@@ -1164,23 +1170,24 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 			int imageWidths[opts.pPyramid.computedScales];
 			for (int j=0; j < opts.pPyramid.computedScales; j++) 
 			{
-				imageHeights[j] = (*framePyramid)[j].image.rows;
-				imageWidths[j] = (*framePyramid)[j].image.cols;
+				imageHeights[j] = framePyramid[j].image.rows;
+				imageWidths[j] = framePyramid[j].image.cols;
 
 				int channels = opts.pPyramid.pChns.pColor.nChannels + opts.pPyramid.pChns.pGradMag.nChannels + opts.pPyramid.pChns.pGradHist.nChannels;
 				float* chns = (float*)malloc(imageHeights[j]*imageWidths[j]*channels*sizeof(float));
-				features2floatArray((*framePyramid)[j], chns, imageHeights[j], imageWidths[j], opts.pPyramid.pChns.pColor.nChannels, opts.pPyramid.pChns.pGradMag.nChannels, opts.pPyramid.pChns.pGradHist.nChannels);
+				features2floatArray(framePyramid[j], chns, imageHeights[j], imageWidths[j], opts.pPyramid.pChns.pColor.nChannels, opts.pPyramid.pChns.pGradMag.nChannels, opts.pPyramid.pChns.pGradHist.nChannels);
 				scales_chns[j] = chns;
 			}
 
-			//std::cout << "after chns\n";
+			//std::cout << "after chns, candidates: " << bbox_candidates->size() << ", cids: " << scales_cids.size() << ", chns: " << scales_chns.size() << std::endl;
 
 			// aplies classifier to all candidate bounding boxes
  			frameDetections = applyCalibratedDetectorToFrame(bbox_candidates, scales_chns, imageHeights, imageWidths, shrink, modelHt, modelWd, stride, cascThr, 
  							thrs, hs, scales_cids, fids, child, nTreeNodes, nTrees, treeDepth, nChns, image.cols, image.rows, *(config.projectionMatrix));
 		
- 			//std::cout << frameDetections.size() << " detections after first step\n";
+ 			//std::cout << std::endl << frameDetections.size() << " detections after first step\n";
 
+ 			/*
  			if (config.candidateGeneration == SPARSE)
  			{
 				clock_t candidateStart = clock();
@@ -1190,53 +1197,67 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 			 													config.maxPedestrianWorldHeight, *(config.projectionMatrix), *(config.homographyMatrix));
 				else
 				{
-					/*
-					showDetections(image, frameDetections, "sparse detections");
-					showDetections(image, candidateRegions, "regions before");
-					*/
+					//std::cout << "before addCandidateRegions\n";
+					
+					//showDetections(image, frameDetections, "sparse detections");
+					//showDetections(image, candidateRegions, "regions before");
+					
 					BB_Array *newCandidates = addCandidateRegions(&frameDetections, image.rows, image.cols, opts.modelDs[0], opts.modelDs[1],
 												config.minPedestrianWorldHeight, config.maxPedestrianWorldHeight, shrink, *(config.projectionMatrix), *(config.homographyMatrix));
+					
 					//std::cout << newCandidates->size() << " new candidates generated\n";
+
 					if (newCandidates->size() > 0)
 					{
+						//std::cout << "before candidates insert\n";
+
 						denseCandidates->insert(denseCandidates->end(), newCandidates->begin(), newCandidates->end());
-						/*
-						showDetections(image, candidateRegions, "regions after");
-						cv::waitKey();*/
+						
+						//showDetections(image, candidateRegions, "regions after");
+						//cv::waitKey();
+
+						//std::cout << "before delete\n";
+
+						delete newCandidates;
 					}
 
 					//std::cout << "after add\n";
 
-					delete newCandidates;
-				} // */
+					
+
+					//std::cout << "after delete\n";
+				}
 				clock_t candidateEnd = clock();
 
 				
-				//std::cout << "\nnumber of regions before removal:" << candidateRegions.size() << std::endl;
+				//std::cout << "number of regions before removal:" << candidateRegions.size() << std::endl;
 				//std::cout << denseCandidates->size() << " dense candidates before removal\n";
 				//showDetections(image, candidateRegions, "candidate regions before removal");
 				//cv::waitKey();
-				// */
 
  				//std::cout << denseCandidates->size() << " candidates generated in " << (double(candidateEnd - candidateStart) / CLOCKS_PER_SEC) << " seconds\n"; 
  				
 				//std::cout << std::endl << denseCandidates->size()+bbox_candidates->size() << " candidates analized this frame\n";
 
- 				/*
+ 				
 				// debug: shows the candidate regions
-				showDetections(I, (*denseCandidates), "candidates");
+				//showDetections(I, (*denseCandidates), "candidates");
 				//cv::waitKey();
-				// debug */
+				// debug 
+
+				//std::cout << "before clear, frameDetections.size(): " << frameDetections.size() << std::endl; 
 
  				frameDetections.clear();
+
+ 				//std::cout << "after clear, frameDetections.size(): " << frameDetections.size() << std::endl; 
 
  				frameDetections = applyCalibratedDetectorToFrame(denseCandidates, scales_chns, imageHeights, imageWidths, shrink, modelHt, modelWd, stride, cascThr, 
  							thrs, hs, scales_cids, fids, child, nTreeNodes, nTrees, treeDepth, nChns, image.cols, image.rows, *(config.projectionMatrix));
  				
  				//std::cout << "after second detection\n";
 
- 				if (i%10 == 0)
- 					removeCandidateRegions(frameDetections, denseCandidates);
+ 				//if (i%10 == 0)
+ 				removeCandidateRegions(frameDetections, denseCandidates);
 
  				//std::cout << "after remove\n";
 
@@ -1245,14 +1266,12 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  				//std::cout << denseCandidates->size() << " dense candidates after removal\n";
 				//showDetections(image, candidateRegions, "candidate regions after removal");
 				//cv::waitKey();
-				// */
- 			}
+				// 
+ 			} // */
 
 			// free the memory used to pre-allocate indexes
 			for (int i=0; i < opts.pPyramid.computedScales; i++) 
 				free(scales_chns[i]);
-
-			//std::cout << "after free chns\n";
 		}
 		else
 		{
@@ -1263,7 +1282,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 			detectionStart = clock();
 
 			// aplies classifier to all image patches
-			frameDetections = applyDetectorToFrame(framePyramid, shrink, modelHt, modelWd, stride, cascThr, thrs, hs, fids, child, nTreeNodes, nTrees, treeDepth, nChns);		
+			frameDetections = applyDetectorToFrame(&framePyramid, shrink, modelHt, modelWd, stride, cascThr, thrs, hs, fids, child, nTreeNodes, nTrees, treeDepth, nChns);		
 		}
 		
 		// saves the detections
@@ -1316,7 +1335,8 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		if (config.saveDetectionsInText)
 		{
   			for (int j = 0; j < detections[i-firstFrame].size(); j++)
-  				txtFile << detections[i-firstFrame][j].toString(i);
+  				//txtFile << detections[i-firstFrame][j].toString(i);
+  				txtFile << detections[i-firstFrame][j].height << " " << detections[i-firstFrame][j].score << std::endl;
 		}
 
 		//std::cout << "after save text\n";
@@ -1324,11 +1344,10 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		// clear memory occupied by the pyramid
 		for (int j=0; j < opts.pPyramid.computedScales; j++)
 		{
-			(*framePyramid)[j].image.release();
-			(*framePyramid)[j].gradientMagnitude.release();
-			(*framePyramid)[j].gradientHistogram.clear();
+			framePyramid[j].image.release();
+			framePyramid[j].gradientMagnitude.release();
+			framePyramid[j].gradientHistogram.clear();
 		}
-		delete framePyramid;
 		image.release();
 		I.release();
 
@@ -1345,16 +1364,14 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 
 	if (config.useCalibration)
 	{
-		if (config.candidateGeneration == SPARSE)
-			delete denseCandidates;
-		delete bbox_candidates;
-
 		for (int i=0; i < opts.pPyramid.computedScales; i++)
 			free(scales_cids[i]);
-	}
 
-	//std::cout << "after final frees/deletes\n";
-	//std::cin.get();
+		delete bbox_candidates;
+
+		if (config.candidateGeneration == SPARSE)
+			delete denseCandidates;
+	}
 
 	if (config.saveDetectionsInText)
 	{

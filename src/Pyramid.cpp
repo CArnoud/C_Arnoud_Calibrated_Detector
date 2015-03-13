@@ -30,7 +30,7 @@ void Pyramid::readPyramid(cv::FileNode pyramidNode)
 }
 
 // translation of the chnsPyramid.m file
-std::vector<Info>* Pyramid::computeFeaturePyramid(cv::Mat I, bool useCalibration)
+std::vector<Info> Pyramid::computeFeaturePyramid(cv::Mat I, bool useCalibration)
 {
 	int colorChannels = pChns.pColor.nChannels;
 	int histogramChannels = pChns.pGradHist.nChannels;
@@ -65,7 +65,7 @@ std::vector<Info>* Pyramid::computeFeaturePyramid(cv::Mat I, bool useCalibration
 	if (!useCalibration)
 		getScales(I.rows, I.cols, pChns.shrink);
 
-	std::vector<Info>* computedChannels = new std::vector<Info>(computedScales); 
+	std::vector<Info> computedChannels(computedScales); 
 
 	int new_h, new_w;
 	float* I1;
@@ -97,7 +97,7 @@ std::vector<Info>* Pyramid::computeFeaturePyramid(cv::Mat I, bool useCalibration
 		}
 
 		//computedChannels.insert(computedChannels.begin()+i, computeSingleScaleChannelFeatures(I1, new_h, new_w));
-		(*computedChannels)[i] = computeSingleScaleChannelFeatures(I1, new_h, new_w);
+		computedChannels[i] = computeSingleScaleChannelFeatures(I1, new_h, new_w);
 
 		if (I1 != convertedImage)
 			free(I1);
@@ -128,40 +128,40 @@ std::vector<Info>* Pyramid::computeFeaturePyramid(cv::Mat I, bool useCalibration
 					iR = (j+1)*(approximatedScales+1);
 			}
 
-			int realScaleRows = (*computedChannels)[iR].image.rows;
-			int realScaleCols = (*computedChannels)[iR].image.cols;
+			int realScaleRows = computedChannels[iR].image.rows;
+			int realScaleCols = computedChannels[iR].image.cols;
 
 			// resample color channels
 			ratio[0] = pow(scales[i]/scales[iR],-lambdas[0]);
 		  	float* floatImg2 = (float*)malloc(realScaleRows*realScaleCols*colorChannels*sizeof(float));
-		  	cvMat2floatArray((*computedChannels)[iR].image, floatImg2, colorChannels);
+		  	cvMat2floatArray(computedChannels[iR].image, floatImg2, colorChannels);
 		  	float* tempOutput = (float*)malloc(new_h*new_w*colorChannels*sizeof(float));		  	
 			resample(floatImg2, tempOutput, realScaleRows, new_h, realScaleCols, new_w, colorChannels, ratio[0]);
-			(*computedChannels)[i].image = floatArray2cvMat(tempOutput, new_h, new_w, colorChannels);
+			computedChannels[i].image = floatArray2cvMat(tempOutput, new_h, new_w, colorChannels);
 			free(floatImg2); 
 			free(tempOutput); 
 		
 			// resample gradMag channel
 			ratio[1] = pow(scales[i]/scales[iR],-lambdas[1]);
 			cv::Mat tempMag;
-			cv::transpose((*computedChannels)[iR].gradientMagnitude, tempMag);
+			cv::transpose(computedChannels[iR].gradientMagnitude, tempMag);
 			float *floatMag = (float*)tempMag.data;
 			float* tempOutput1 = (float*)malloc(new_h*new_w*1*sizeof(float));
 			resample(floatMag, tempOutput1, realScaleRows, new_h, realScaleCols, new_w, 1, ratio[1]);
-			(*computedChannels)[i].gradientMagnitude = floatArray2cvMat(tempOutput1, new_h, new_w, 1);
+			computedChannels[i].gradientMagnitude = floatArray2cvMat(tempOutput1, new_h, new_w, 1);
 			free(tempOutput1);
 			
 			// resample histogram channels
 			ratio[2] = pow(scales[i]/scales[iR],-lambdas[2]);
-			(*computedChannels)[i].gradientHistogram.reserve(histogramChannels);
+			computedChannels[i].gradientHistogram.reserve(histogramChannels);
 			for (int k=0; k < histogramChannels; k++)
 			{
 				cv::Mat tempHist;
-				cv::transpose((*computedChannels)[iR].gradientHistogram[k], tempHist);
+				cv::transpose(computedChannels[iR].gradientHistogram[k], tempHist);
 				float *floatHist = (float*)tempHist.data;
 				float* tempOutput2 = (float*)malloc(new_h*new_w*1*sizeof(float));
 				resample(floatHist, tempOutput2, realScaleRows, new_h, realScaleCols, new_w, 1, ratio[2]);
-				(*computedChannels)[i].gradientHistogram.push_back(floatArray2cvMat(tempOutput2, new_h, new_w, 1));
+				computedChannels[i].gradientHistogram.push_back(floatArray2cvMat(tempOutput2, new_h, new_w, 1));
 				free(tempOutput2);
 			}
 		}
@@ -177,47 +177,47 @@ std::vector<Info>* Pyramid::computeFeaturePyramid(cv::Mat I, bool useCalibration
 	//smooth channels, optionally pad and concatenate channels
 	for (int i=0; i < computedScales; i++)
 	{
-		int h = (*computedChannels)[i].image.rows;
-		int w = (*computedChannels)[i].image.cols;
+		int h = computedChannels[i].image.rows;
+		int w = computedChannels[i].image.cols;
 
 		// apply convolution to color channels
 	  	float* floatImg3 = (float*)malloc(h*w*colorChannels*sizeof(float));
-	  	cvMat2floatArray((*computedChannels)[i].image, floatImg3, colorChannels);
+	  	cvMat2floatArray(computedChannels[i].image, floatImg3, colorChannels);
 	  	float* tempOutput = (float*)malloc(h*w*colorChannels*sizeof(float));
 		convolution(floatImg3, tempOutput, h, w, colorChannels, smoothingRadius, 1);
-		(*computedChannels)[i].image = floatArray2cvMat(tempOutput, h, w, 3);
+		computedChannels[i].image = floatArray2cvMat(tempOutput, h, w, 3);
 		free(tempOutput); 
 		free(floatImg3);
 
 		// apply convolution to gradient magnitude channel
 		cv::Mat tempMag;
-		cv::transpose((*computedChannels)[i].gradientMagnitude, tempMag);
+		cv::transpose(computedChannels[i].gradientMagnitude, tempMag);
 		float *floatMag = (float*)tempMag.data;
 		float* tempOutput1 = (float*)malloc(h*w*sizeof(float));
 		convolution(floatMag, tempOutput1, h, w, 1, smoothingRadius, 1);	
-		(*computedChannels)[i].gradientMagnitude = floatArray2cvMat(tempOutput1, h, w, 1);
+		computedChannels[i].gradientMagnitude = floatArray2cvMat(tempOutput1, h, w, 1);
 		free(tempOutput1);
 
 		// apply convolution to gradient histogram channels
 		for (int j=0; j < pChns.pGradHist.nChannels; j++)
 		{
 			cv::Mat tempHist;
-			cv::transpose((*computedChannels)[i].gradientHistogram[j], tempHist);
+			cv::transpose(computedChannels[i].gradientHistogram[j], tempHist);
 			float *floatHist = (float*)tempHist.data;
 			float* tempOutput2 = (float*)malloc(h*w*sizeof(float));
 			convolution(floatHist, tempOutput2, h, w, 1, smoothingRadius, 1);
-			(*computedChannels)[i].gradientHistogram[j] = floatArray2cvMat(tempOutput2, h, w, 1);
+			computedChannels[i].gradientHistogram[j] = floatArray2cvMat(tempOutput2, h, w, 1);
 			free(tempOutput2);
 		}
 
 		// pad the resulting images
 		if (pad[0]!=0 || pad[1]!=0)
 		{
-			(*computedChannels)[i].image = padImage((*computedChannels)[i].image, 3, tempPad, padSize, REPLICATE);
-			(*computedChannels)[i].gradientMagnitude = padImage((*computedChannels)[i].gradientMagnitude, 1, tempPad, padSize, 0);
+			computedChannels[i].image = padImage(computedChannels[i].image, 3, tempPad, padSize, REPLICATE);
+			computedChannels[i].gradientMagnitude = padImage(computedChannels[i].gradientMagnitude, 1, tempPad, padSize, 0);
 
 			for (int j=0; j < pChns.pGradHist.nChannels; j++)
-				(*computedChannels)[i].gradientHistogram[j] = padImage((*computedChannels)[i].gradientHistogram[j], 1, tempPad, padSize, 0);
+				computedChannels[i].gradientHistogram[j] = padImage(computedChannels[i].gradientHistogram[j], 1, tempPad, padSize, 0);
 		}
 	}
 

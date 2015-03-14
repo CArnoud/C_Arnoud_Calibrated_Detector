@@ -128,8 +128,6 @@ void Detector::exportDetectorModel(cv::String fileName)
 }
 
 // reads the detector model from the xml model
-// for now, it must be like this since the current model was not written by this program 
-// this will change after we are set on a class structure
 void Detector::importDetectorModel(cv::String fileName)
 {
 	cv::FileStorage xml;
@@ -188,7 +186,7 @@ bool isBBinsideRegion(BoundingBox region, int bottomLeftX, int bottomLeftY)
 		return false;
 }
 
-void Detector::removeCandidateRegions(BB_Array detections, BB_Array *denseCandidates)
+void Detector::removeCandidateRegions(BB_Array detections, BB_Array& denseCandidates)
 {
 	for (int i=0; i < candidateRegions.size(); i++)
 	{
@@ -204,12 +202,12 @@ void Detector::removeCandidateRegions(BB_Array detections, BB_Array *denseCandid
 		if (!found)
 		{
 			// remove all candidates inside region i
-			for (int k=0; k < denseCandidates->size(); k++)
+			for (int k=0; k < denseCandidates.size(); k++)
 			{
-				if(isBBinsideRegion(candidateRegions[i], (*denseCandidates)[k].topLeftPoint.x, (*denseCandidates)[k].topLeftPoint.y+(*denseCandidates)[k].height))
+				if(isBBinsideRegion(candidateRegions[i], denseCandidates[k].topLeftPoint.x, denseCandidates[k].topLeftPoint.y+denseCandidates[k].height))
 				{
-					std::swap((*denseCandidates)[k], denseCandidates->back());
-					denseCandidates->pop_back();
+					std::swap(denseCandidates[k], denseCandidates.back());
+					denseCandidates.pop_back();
 					k--;
 				}
 			}
@@ -222,21 +220,21 @@ void Detector::removeCandidateRegions(BB_Array detections, BB_Array *denseCandid
 	}
 }
 
-BB_Array* Detector::addCandidateRegions(BB_Array* candidates, int imageHeight, int imageWidth, int modelHeight, int modelWidth, float minPedestrianHeight,
+BB_Array Detector::addCandidateRegions(BB_Array candidates, int imageHeight, int imageWidth, int modelHeight, int modelWidth, float minPedestrianHeight,
 										float maxPedestrianHeight, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H)
 {
-	BB_Array* result = new BB_Array();
+	BB_Array result;
 	BB_Array sparseDetections;
 
 	//std::cout << "testing " << candidates->size() << " detections\n";
 
-	for (int i = 0; i < candidates->size(); i++)
+	for (int i = 0; i < candidates.size(); i++)
 	{
 		bool covered = false;
 		int j=0;
 		while (!covered && j < candidateRegions.size())
 		{
-			covered = isBBinsideRegion(candidateRegions[j], (*candidates)[i].topLeftPoint.x, (*candidates)[i].topLeftPoint.y+(*candidates)[i].height); 
+			covered = isBBinsideRegion(candidateRegions[j], candidates[i].topLeftPoint.x, candidates[i].topLeftPoint.y+candidates[i].height); 
 
 			j++;
 		}
@@ -249,24 +247,24 @@ BB_Array* Detector::addCandidateRegions(BB_Array* candidates, int imageHeight, i
 
 			while (!discarded && l < sparseDetections.size())
 			{
-				if ((*candidates)[i].topLeftPoint.x >= sparseDetections[l].topLeftPoint.x-sparseDetections[l].width &&
-				(*candidates)[i].topLeftPoint.x <= sparseDetections[l].topLeftPoint.x+sparseDetections[l].width &&
-				(*candidates)[i].topLeftPoint.y >= sparseDetections[l].topLeftPoint.y-(sparseDetections[l].height/2) &&
-				(*candidates)[i].topLeftPoint.y <= sparseDetections[l].topLeftPoint.y+(sparseDetections[l].height/2)) 
+				if (candidates[i].topLeftPoint.x >= sparseDetections[l].topLeftPoint.x-sparseDetections[l].width &&
+				candidates[i].topLeftPoint.x <= sparseDetections[l].topLeftPoint.x+sparseDetections[l].width &&
+				candidates[i].topLeftPoint.y >= sparseDetections[l].topLeftPoint.y-(sparseDetections[l].height/2) &&
+				candidates[i].topLeftPoint.y <= sparseDetections[l].topLeftPoint.y+(sparseDetections[l].height/2)) 
 				{
 					discarded = true;
 
-					if ((*candidates)[i].score > sparseDetections[l].score)
+					if (candidates[i].score > sparseDetections[l].score)
 					{
-						sparseDetections[l].topLeftPoint.x = (*candidates)[i].topLeftPoint.x;
-						sparseDetections[l].topLeftPoint.y = (*candidates)[i].topLeftPoint.y;
+						sparseDetections[l].topLeftPoint.x = candidates[i].topLeftPoint.x;
+						sparseDetections[l].topLeftPoint.y = candidates[i].topLeftPoint.y;
 					}
 
-					if ((*candidates)[i].height > sparseDetections[l].height)
-						sparseDetections[j].height = (*candidates)[i].height;
+					if (candidates[i].height > sparseDetections[l].height)
+						sparseDetections[j].height = candidates[i].height;
 
-					if ((*candidates)[i].width > sparseDetections[l].width)
-						sparseDetections[j].width = (*candidates)[i].width;
+					if (candidates[i].width > sparseDetections[l].width)
+						sparseDetections[j].width = candidates[i].width;
 				}
 
 				l++;
@@ -274,7 +272,7 @@ BB_Array* Detector::addCandidateRegions(BB_Array* candidates, int imageHeight, i
 
 			if (!discarded)
 			{
-				sparseDetections.push_back((*candidates)[i]);
+				sparseDetections.push_back(candidates[i]);
 			}
 		}
 	}
@@ -353,7 +351,7 @@ BB_Array* Detector::addCandidateRegions(BB_Array* candidates, int imageHeight, i
 						{
 							bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
 							BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
-							result->push_back(maxCandidate);
+							result.push_back(maxCandidate);
 						}
 
 						int previousScale = -1;
@@ -378,7 +376,7 @@ BB_Array* Detector::addCandidateRegions(BB_Array* candidates, int imageHeight, i
 									if (u + bbWidth <= imageWidth)
 									{
 										BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
-										result->push_back(newCandidate);
+										result.push_back(newCandidate);
 									}
 								}
 							}
@@ -396,27 +394,22 @@ BB_Array* Detector::addCandidateRegions(BB_Array* candidates, int imageHeight, i
 	return result;
 }
 
-BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeight, int imageWidth, int shrink, int modelHeight, int modelWidth, 
+BB_Array Detector::generateCandidateRegions(BB_Array candidates, int imageHeight, int imageWidth, int shrink, int modelHeight, int modelWidth, 
 											float minPedestrianHeight, float maxPedestrianHeight, cv::Mat_<float> &P, cv::Mat_<float> &H)
 {
-	BB_Array* result = new BB_Array();
+	BB_Array result;
 	BB_Array tempResult;
 
-	/*
-	result->reserve(10000);
-	tempResult.reserve(10000);
-	*/
-
 	// sort the candidates by score
-	BB_Array sortedCandidates(candidates->size());
-	for (int i=0; i < candidates->size(); i++)
+	BB_Array sortedCandidates(candidates.size());
+	for (int i=0; i < candidates.size(); i++)
 	{
-		sortedCandidates[i] = (*candidates)[i];
+		sortedCandidates[i] = candidates[i];
 	} 
 	std::sort(sortedCandidates.begin(), sortedCandidates.begin()+sortedCandidates.size());
 
 	// keeps only the biggest bounding box of each region (could be relocated to the classifier)
-	for (int i = 0; i < candidates->size(); ++i)
+	for (int i = 0; i < candidates.size(); ++i)
 	{
 		bool discard = false;
 		int j=0;
@@ -461,13 +454,7 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 		}
 
 		if (!discard)
-		{
-			/*
-			if (tempResult.size() >= tempResult.capacity())
-				tempResult.reserve(5000);
-			*/
 			tempResult.push_back(sortedCandidates[i]);
-		}
 	}
 
 	/*
@@ -529,13 +516,7 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 					{
 						bbScale = findClosestScaleFromBbox(bbHeight, imageHeight);
 						BoundingBox maxCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
-
-						/*
-						if (result->size() >= result->capacity())
-							result->reserve(10000);
-						// */
-
-						result->push_back(maxCandidate);
+						result.push_back(maxCandidate);
 					}
 
 					int previousScale = -1;
@@ -560,13 +541,7 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 								if (u + bbWidth <= imageWidth)
 								{
 									BoundingBox newCandidate(u, head_v, bbWidth, bbHeight, bbScale, bbWorldHeight);
-
-									/*
-									if (result->size() >= result->capacity())
-										result->reserve(10000);									
-									// */
-
-									result->push_back(newCandidate);
+									result.push_back(newCandidate);
 								}
 							}
 						}
@@ -586,13 +561,13 @@ BB_Array* Detector::generateCandidateRegions(BB_Array* candidates, int imageHeig
 	return result;
 } 
 
-BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, float minPedestrianHeight, float maxPedestrianHeight, int imageWidth, 
+BB_Array Detector::generateSparseCandidates(int modelWidth, int modelHeight, float minPedestrianHeight, float maxPedestrianHeight, int imageWidth, 
 											int imageHeight, cv::Mat_<float> &P, cv::Mat_<float> &H) 
 {
 	int u;
 	int v = modelHeight;
 	int vStep;
-	BB_Array *candidates = new BB_Array();
+	BB_Array candidates;
 	//candidates->reserve(30000);
 
 	while (v < imageHeight)
@@ -631,7 +606,7 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 						candidates->reserve(10000);
 					}
 					// */
-					candidates->push_back(maxCandidate);
+					candidates.push_back(maxCandidate);
 					sumBBHeights = sumBBHeights + bbHeight;
 				}
 				
@@ -661,7 +636,7 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 							}
 							// */
 
-							candidates->push_back(newCandidate);
+							candidates.push_back(newCandidate);
 							sumBBHeights = sumBBHeights + bbHeight;
 						}
 						//boundingBoxesOnRow++;
@@ -689,8 +664,7 @@ BB_Array* Detector::generateSparseCandidates(int modelWidth, int modelHeight, fl
 	return candidates;
 }
 
-// candidate generation done by Gustavo Führ
-BB_Array* Detector::generateCandidates(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, float BBwidth2heightRatio, 
+BB_Array Detector::generateCandidates(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, float BBwidth2heightRatio, 
 										float meanHeight/* = 1.7m*/, float stdHeight/* = 0.1m*/, float factorStdHeight/* = 2.0*/) 
 {
 
@@ -704,7 +678,7 @@ BB_Array* Detector::generateCandidates(int imageHeight, int imageWidth, int shri
 	float stepHeight = 100;
 	int totalCandidates = 0;
 
-	BB_Array *candidates = new BB_Array();
+	BB_Array candidates;
 	double max_h = 0;
 	
 	cv::Mat_<float> H_inv = H.inv();
@@ -742,7 +716,7 @@ BB_Array* Detector::generateCandidates(int imageHeight, int imageWidth, int shri
 						if (bb.height > max_h) 
 							max_h = bb.height;
 						bb.scale = findClosestScaleFromBbox(bb.height, imageHeight);
-						candidates->push_back(bb);
+						candidates.push_back(bb);
 					}
 				}
 
@@ -825,23 +799,23 @@ inline void getChild(float *chns1, uint32 *cids, uint32 *fids, float *thrs, uint
   k0=k+=k0*2; k+=offset;
 }
 
-BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array* bbox_candidates, std::vector<float*> scales_chns, int *imageHeigths, int *imageWidths, int shrink, 
+BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array bbox_candidates, std::vector<float*> scales_chns, int *imageHeigths, int *imageWidths, int shrink, 
 											int modelHt, int modelWd, int stride, float cascThr, float *thrs, float *hs, std::vector<uint32*> scales_cids, 
 											uint32 *fids, uint32 *child, int nTreeNodes, int nTrees, int treeDepth, int nChns, int imageWidth, int imageHeight, 
 											cv::Mat_<float> &P)
 {
 	BB_Array result;
 
-	for (int i = 0; i < bbox_candidates->size(); ++i) {
+	for (int i = 0; i < bbox_candidates.size(); ++i) {
 		// see which scale is best suited to the candidate
-		int ith_scale = (*bbox_candidates)[i].scale;
+		int ith_scale = bbox_candidates[i].scale;
 		
 		int height = imageHeigths[ith_scale];                                                              
 		int width = imageWidths[ith_scale];
 
 		// r and c are defined by the candidate itself
 		int r, c;
-		bbTopLeft2PyramidRowColumn(&r, &c, (*bbox_candidates)[i], modelHt, modelWd, ith_scale, stride);
+		bbTopLeft2PyramidRowColumn(&r, &c, bbox_candidates[i], modelHt, modelWd, ith_scale, stride);
 		
 		float h=0, *chns1=scales_chns[ith_scale]+(r*stride/shrink) + (c*stride/shrink)*height;
 	    
@@ -883,13 +857,14 @@ BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array* bbox_candidates, std
 	      }
 	    }
 
-	    //double hf = h*gaussianFunction(1800, 300, (*bbox_candidates)[i].worldHeight);
+	    //double hf = h*gaussianFunction(1800, 300, bbox_candidates[i].worldHeight);
+	    //if (hf>1.0)
 	    if(h>cascThr)
 	    {
 			// std::cout << h << std::endl;
 			// std::cout << "hey" << std::endl;
 			//cv::imshow("results", debug_image);
-			BoundingBox detection((*bbox_candidates)[i]);
+			BoundingBox detection(bbox_candidates[i]);
 			detection.score = h;
 			detection.scale = ith_scale;
 
@@ -1067,12 +1042,9 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		numberOfFrames = lastFrame-firstFrame+1;
 	BB_Array_Array detections(numberOfFrames);
 
-	BB_Array *bbox_candidates;
-	BB_Array *denseCandidates;
+	BB_Array bbox_candidates;
+	BB_Array denseCandidates;
 	std::vector<uint32*> scales_cids;
-
-	if (config.candidateGeneration == SPARSE)
-		denseCandidates = new BB_Array();
 
 	for (int i = firstFrame; i < firstFrame + numberOfFrames; i++)
 	{
@@ -1187,14 +1159,15 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		
  			//std::cout << std::endl << frameDetections.size() << " detections after first step\n";
 
- 			/*
  			if (config.candidateGeneration == SPARSE)
  			{
 				clock_t candidateStart = clock();
 
 				if (candidateRegions.size() == 0)
-					denseCandidates = generateCandidateRegions(&frameDetections, image.rows, image.cols, shrink, opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,
+					denseCandidates = generateCandidateRegions(frameDetections, image.rows, image.cols, shrink, opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,
 			 													config.maxPedestrianWorldHeight, *(config.projectionMatrix), *(config.homographyMatrix));
+				
+				// this part is very naughty
 				else
 				{
 					//std::cout << "before addCandidateRegions\n";
@@ -1202,31 +1175,30 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 					//showDetections(image, frameDetections, "sparse detections");
 					//showDetections(image, candidateRegions, "regions before");
 					
-					BB_Array *newCandidates = addCandidateRegions(&frameDetections, image.rows, image.cols, opts.modelDs[0], opts.modelDs[1],
+					BB_Array newCandidates = addCandidateRegions(frameDetections, image.rows, image.cols, opts.modelDs[0], opts.modelDs[1],
 												config.minPedestrianWorldHeight, config.maxPedestrianWorldHeight, shrink, *(config.projectionMatrix), *(config.homographyMatrix));
-					
+
 					//std::cout << newCandidates->size() << " new candidates generated\n";
 
-					if (newCandidates->size() > 0)
+					if (newCandidates.size() > 0)
 					{
 						//std::cout << "before candidates insert\n";
 
-						denseCandidates->insert(denseCandidates->end(), newCandidates->begin(), newCandidates->end());
+						denseCandidates.insert(denseCandidates.end(), newCandidates.begin(), newCandidates.end());
 						
 						//showDetections(image, candidateRegions, "regions after");
 						//cv::waitKey();
 
-						//std::cout << "before delete\n";
+						//std::cout << "before delete\n";	
 
-						delete newCandidates;
 					}
 
 					//std::cout << "after add\n";
 
-					
+					//delete newCandidates;
 
 					//std::cout << "after delete\n";
-				}
+				} //*/
 				clock_t candidateEnd = clock();
 
 				
@@ -1256,7 +1228,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  				
  				//std::cout << "after second detection\n";
 
- 				//if (i%10 == 0)
+				//if (i%10 == 0)
  				removeCandidateRegions(frameDetections, denseCandidates);
 
  				//std::cout << "after remove\n";
@@ -1266,7 +1238,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  				//std::cout << denseCandidates->size() << " dense candidates after removal\n";
 				//showDetections(image, candidateRegions, "candidate regions after removal");
 				//cv::waitKey();
-				// 
+				// */
  			} // */
 
 			// free the memory used to pre-allocate indexes
@@ -1348,6 +1320,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 			framePyramid[j].gradientMagnitude.release();
 			framePyramid[j].gradientHistogram.clear();
 		}
+		framePyramid.clear();
 		image.release();
 		I.release();
 
@@ -1367,10 +1340,10 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		for (int i=0; i < opts.pPyramid.computedScales; i++)
 			free(scales_cids[i]);
 
-		delete bbox_candidates;
+		//delete bbox_candidates;
 
-		if (config.candidateGeneration == SPARSE)
-			delete denseCandidates;
+		//if (config.candidateGeneration == SPARSE)
+		//	delete denseCandidates;
 	}
 
 	if (config.saveDetectionsInText)

@@ -68,18 +68,24 @@ private:
 
 	BoundingBox pyramidRowColumn2BoundingBox(int r, int c,  int modelHt, int modelWd, int ith_scale, int stride);
 
-	void removeCandidateRegions(BB_Array detections, BB_Array *denseCandidates);
+	void removeCandidateRegions(BB_Array detections, BB_Array& denseCandidates);
 
-	BB_Array* addCandidateRegions(BB_Array* candidates, int imageHeight, int imageWidth, int modelHeight, int modelWidth, float minPedestrianHeight,
+	//BB_Array* addCandidateRegions(BB_Array* candidates, int imageHeight, int imageWidth, int modelHeight, int modelWidth, float minPedestrianHeight,
+	//									float maxPedestrianHeight, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H);
+
+	BB_Array addCandidateRegions(BB_Array candidates, int imageHeight, int imageWidth, int modelHeight, int modelWidth, float minPedestrianHeight,
 										float maxPedestrianHeight, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H);
 
-	BB_Array* generateCandidateRegions(BB_Array* candidates, int imageHeight, int imageWidth, int shrink, int modelHeight, int modelWidth, float minPedestrianHeight, 
-											float maxPedestrianHeight, cv::Mat_<float> &P, cv::Mat_<float> &H);
+	//BB_Array* generateCandidateRegions(BB_Array* candidates, int imageHeight, int imageWidth, int shrink, int modelHeight, int modelWidth, float minPedestrianHeight, 
+	//										float maxPedestrianHeight, cv::Mat_<float> &P, cv::Mat_<float> &H);
 
-	BB_Array* generateSparseCandidates(int modelWidth, int modelHeight, float minPedestrianHeight, float maxPedestrianHeight, int imageWidth, 
+	BB_Array generateCandidateRegions(BB_Array candidates, int imageHeight, int imageWidth, int shrink, int modelHeight, int modelWidth, 
+											float minPedestrianHeight, float maxPedestrianHeight, cv::Mat_<float> &P, cv::Mat_<float> &H);
+
+	BB_Array generateSparseCandidates(int modelWidth, int modelHeight, float minPedestrianHeight, float maxPedestrianHeight, int imageWidth, 
 											int imageHeight, cv::Mat_<float> &P, cv::Mat_<float> &H);
 
-	BB_Array* generateCandidates(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, float BBwidth2heightRatio, 
+	BB_Array generateCandidates(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, float BBwidth2heightRatio, 
 									float meanHeight = 1800, float stdHeight = 100, float factorStdHeight = 2.0);
 
 	int findClosestScaleFromBbox(int bbHeight, int imageHeight);
@@ -87,7 +93,7 @@ private:
 	int findClosestScaleFromBbox2(std::vector<Info> &pyramid, BoundingBox &bb,
 												int modelHeight, double shrink);
 	
-	BB_Array applyCalibratedDetectorToFrame(BB_Array* bbox_candidates, std::vector<float*> scales_chns, int *imageHeigths, int *imageWidths, int shrink, int modelHt, int modelWd, int stride, 
+	BB_Array applyCalibratedDetectorToFrame(BB_Array bbox_candidates, std::vector<float*> scales_chns, int *imageHeigths, int *imageWidths, int shrink, int modelHt, int modelWd, int stride, 
 											float cascThr, float *thrs, float *hs, std::vector<uint32*> scales_cids, uint32 *fids, uint32 *child, int nTreeNodes, 
 											int nTrees, int treeDepth, int nChns, int imageWidth, int imageHeight, cv::Mat_<float> &P);
 

@@ -276,10 +276,10 @@ BB_Array Detector::addCandidateRegions(BB_Array candidates, int imageHeight, int
 					}
 
 					if (candidates[i].height > sparseDetections[l].height)
-						sparseDetections[j].height = candidates[i].height;
+						sparseDetections[l].height = candidates[i].height;
 
 					if (candidates[i].width > sparseDetections[l].width)
-						sparseDetections[j].width = candidates[i].width;
+						sparseDetections[l].width = candidates[i].width;
 				}
 
 				l++;
@@ -304,15 +304,9 @@ BB_Array Detector::addCandidateRegions(BB_Array candidates, int imageHeight, int
 		int j=0;
 		bool covered = false;
 
-		// is this test necessary?
 		while (!covered && j < sparseDetections.size())
 		{
 			covered=isBBinsideRegion(candidateRegions[j], sparseDetections[i].topLeftPoint.x, sparseDetections[i].topLeftPoint.y+sparseDetections[i].height); 		
-
-			/*
-			if (covered)
-				std::cout << "candidate[" << i << "] is covered by region[" << j << "]\n";
-			*/
 
 			j++;
 		}
@@ -334,8 +328,6 @@ BB_Array Detector::addCandidateRegions(BB_Array candidates, int imageHeight, int
 				regionU = 0;
 			BoundingBox region(regionU, v, maxU-regionU, maxV-v);
 			candidateRegions.push_back(region);
-
-			//std::cout << "one region added\n"; 
 
 			while (v < maxV)
 			{
@@ -816,7 +808,7 @@ inline void getChild(float *chns1, uint32 *cids, uint32 *fids, float *thrs, uint
   k0=k+=k0*2; k+=offset;
 }
 
-BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array bbox_candidates, std::vector<float*> scales_chns, int *imageHeigths, int *imageWidths, int shrink, 
+BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array& bbox_candidates, std::vector<float*> scales_chns, int *imageHeigths, int *imageWidths, int shrink, 
 											int modelHt, int modelWd, int stride, float cascThr, float *thrs, float *hs, std::vector<uint32*> scales_cids, 
 											uint32 *fids, uint32 *child, int nTreeNodes, int nTrees, int treeDepth, int nChns, int imageWidth, int imageHeight, 
 											cv::Mat_<float> &P)
@@ -874,9 +866,9 @@ BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array bbox_candidates, std:
 	      }
 	    }
 
-	    //double hf = h*gaussianFunction(1800, 300, bbox_candidates[i].worldHeight);
-	    //if (hf>1.0)
-	    if(h>cascThr)
+	    double hf = h*gaussianFunction(1800, 300, bbox_candidates[i].worldHeight);
+	    if (hf>1.0)
+	    //if(h>cascThr)
 	    {
 			// std::cout << h << std::endl;
 			// std::cout << "hey" << std::endl;
@@ -1063,7 +1055,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 	BB_Array denseCandidates;
 	std::vector<uint32*> scales_cids;
 
-	for (int i = firstFrame; i < firstFrame + numberOfFrames - 1; i++)
+	for (int i = firstFrame; i < firstFrame + numberOfFrames; i++)
 	{
 		clock_t frameStart = clock();
 
@@ -1161,8 +1153,6 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 				if (candidateRegions.size() == 0)
 					denseCandidates = generateCandidateRegions(frameDetections, image.rows, image.cols, shrink, opts.modelDs[0], opts.modelDs[1], config.minPedestrianWorldHeight,
 			 													config.maxPedestrianWorldHeight, *(config.projectionMatrix), *(config.homographyMatrix));
-				
-				// this part is very naughty
 				else
 				{
 					BB_Array newCandidates = addCandidateRegions(frameDetections, image.rows, image.cols, opts.modelDs[0], opts.modelDs[1],
@@ -1172,7 +1162,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 						denseCandidates.insert(denseCandidates.end(), newCandidates.begin(), newCandidates.end());
 
 					newCandidates.clear(); // is this necessary?
-				} //*/
+				} //
 				clock_t candidateEnd = clock();
 
  				frameDetections.clear();
@@ -1180,8 +1170,9 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  				frameDetections = applyCalibratedDetectorToFrame(denseCandidates, scales_chns, imageHeights, imageWidths, shrink, modelHt, modelWd, stride, cascThr, 
  							thrs, hs, scales_cids, fids, child, nTreeNodes, nTrees, treeDepth, nChns, image.cols, image.rows, *(config.projectionMatrix));
  				
- 				// remove dense regions where there was no detection
+ 				//remove dense regions where there was no detection
  				removeCandidateRegions(frameDetections, denseCandidates);
+ 				// */
  			} // */
 
 			// free the memory used to pre-allocate indexes

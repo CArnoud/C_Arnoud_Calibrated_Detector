@@ -17,7 +17,7 @@ struct Config
 	std::string dataSetDirectory;
 	int firstFrame, lastFrame;
 
-	bool displayDetections, saveFrames, saveDetectionsInText, useCalibration; 
+	bool displayDetections, saveFrames, saveDetectionsInText, useCalibration, showScore; 
 	std::string outputFolder;
 	int candidateGeneration;
 
@@ -56,7 +56,7 @@ public:
 
 	void exportDetectorModel(cv::String);
 	void importDetectorModel(cv::String);
-	BB_Array applyDetectorToFrame(std::vector<Info>* pyramid, int shrink, int modelHt, int modelWd, int stride, float cascThr, float *thrs, 
+	BB_Array applyDetectorToFrame(std::vector<Info> pyramid, int shrink, int modelHt, int modelWd, int stride, float cascThr, float *thrs, 
 									float *hs, uint32 *fids, uint32 *child, int nTreeNodes, int nTrees, int treeDepth, int nChns);
 	void acfDetect(std::vector<std::string> imageNames, std::string dataSetDirectoryName, int firstFrame, int lastFrame);
 	BB_Array nonMaximalSuppression(BB_Array bbs);
@@ -64,7 +64,7 @@ public:
 	Detector(Config _config): config(_config) { };
 
 private:
-	void showDetections(cv::Mat I, BB_Array detections, cv::String windowName);
+	void showDetections(cv::Mat I, BB_Array detections, cv::String windowName, bool showScore);
 
 	BoundingBox pyramidRowColumn2BoundingBox(int r, int c,  int modelHt, int modelWd, int ith_scale, int stride);
 

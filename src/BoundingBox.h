@@ -10,15 +10,7 @@ public:
 	BoundingBox(int topLeftPointX, int topLeftPointY, int w, int h);
 	BoundingBox(int topLeftPointX, int topLeftPointY, int w, int h, int s, float wHeight);
 	cv::Point2i  get_bottomRightPoint();
-
-	cv::Point topLeftPoint;
-	int width;
-	int height;
-	int scale;
-	float worldHeight;
-	float score;
-
-	void plot (cv::Mat &frame, cv::Scalar color);
+	void plot (cv::Mat &frame, cv::Scalar color, bool showScore);
 	std::string toString (int frameIndex);
 
 	// this was added to be able to sort BB_Array objects
@@ -28,6 +20,12 @@ public:
   		return score > other.score;
  	}
 
+	cv::Point topLeftPoint;
+	int width;
+	int height;
+	int scale;
+	float worldHeight;
+	float score;
 };
 
 typedef std::vector<BoundingBox> BB_Array;

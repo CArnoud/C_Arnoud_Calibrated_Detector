@@ -34,13 +34,19 @@ BoundingBox::BoundingBox(int topLeftPointX, int topLeftPointY, int w, int h, int
 	score = 0;
 }
 
-
-void BoundingBox::plot (cv::Mat &frame, cv::Scalar color)
+void BoundingBox::plot (cv::Mat &frame, cv::Scalar color, bool showScore)
 {
 	cv::Point br;
 	br.x = topLeftPoint.x + width;
 	br.y = topLeftPoint.y + height;
 	cv::rectangle(frame, topLeftPoint, br, color, 2.0);
+
+	if(showScore)
+	{
+		std::ostringstream scoreString;
+		scoreString << round(score);
+		putText(frame, scoreString.str(), cvPoint(topLeftPoint.x,topLeftPoint.y-2), cv::FONT_HERSHEY_PLAIN, 1.5, cvScalar(255,255,255));
+	}
 }
 
 std::string BoundingBox::toString (int frameIndex)

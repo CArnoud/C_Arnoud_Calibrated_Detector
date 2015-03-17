@@ -11,16 +11,15 @@ Current Status
   
 Detection working, found out why the program was not optimized. 
 Now it is faster than the original Matlab version, although results seem to be slightly worse.   
-Calibrated detection and feature pyramid online, new candidate generation method is a work in progress.  
+Calibrated detection and feature pyramid online, new candidate generation method is done.  
   
   
 To Do List:  
 ======================  
   
-Current Total: 3    
+Current Total: 2    
   
 Calibrated Detection:  
 &nbsp;&nbsp;&nbsp;&nbsp;Possibly add a way to use background information  
 &nbsp;&nbsp;&nbsp;&nbsp;Remove magic numbers on calibrated detector and suppression  
-&nbsp;&nbsp;&nbsp;&nbsp;debug function new candidate generation function  
       

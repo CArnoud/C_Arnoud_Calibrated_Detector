@@ -761,7 +761,7 @@ int Detector::findClosestScaleFromBbox(int bbHeight, int imageHeight)
 	return i_min;
 }
 
-void Detector::bbTopLeft2PyramidRowColumn(int *r, int *c, BoundingBox bb, int modelHt, int modelWd, int ith_scale, int stride) 
+void Detector::bbTopLeft2PyramidRowColumn(int *r, int *c, BoundingBox& bb, int modelHt, int modelWd, int ith_scale, int stride) 
 {
 	double s1, s2, sw, sh, tlx, tly;
 
@@ -808,8 +808,8 @@ inline void getChild(float *chns1, uint32 *cids, uint32 *fids, float *thrs, uint
   k0=k+=k0*2; k+=offset;
 }
 
-BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array& bbox_candidates, std::vector<float*> scales_chns, int *imageHeigths, int *imageWidths, int shrink, 
-											int modelHt, int modelWd, int stride, float cascThr, float *thrs, float *hs, std::vector<uint32*> scales_cids, 
+BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array& bbox_candidates, std::vector<float*>& scales_chns, int *imageHeigths, int *imageWidths, int shrink, 
+											int modelHt, int modelWd, int stride, float cascThr, float *thrs, float *hs, std::vector<uint32*>& scales_cids, 
 											uint32 *fids, uint32 *child, int nTreeNodes, int nTrees, int treeDepth, int nChns, int imageWidth, int imageHeight, 
 											cv::Mat_<float> &P)
 {

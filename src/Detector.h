@@ -93,11 +93,11 @@ private:
 	int findClosestScaleFromBbox2(std::vector<Info> &pyramid, BoundingBox &bb,
 												int modelHeight, double shrink);
 	
-	BB_Array applyCalibratedDetectorToFrame(BB_Array& bbox_candidates, std::vector<float*> scales_chns, int *imageHeigths, int *imageWidths, int shrink, int modelHt, int modelWd, int stride, 
-											float cascThr, float *thrs, float *hs, std::vector<uint32*> scales_cids, uint32 *fids, uint32 *child, int nTreeNodes, 
+	BB_Array applyCalibratedDetectorToFrame(BB_Array& bbox_candidates, std::vector<float*>& scales_chns, int *imageHeigths, int *imageWidths, int shrink, int modelHt, int modelWd, int stride, 
+											float cascThr, float *thrs, float *hs, std::vector<uint32*>& scales_cids, uint32 *fids, uint32 *child, int nTreeNodes, 
 											int nTrees, int treeDepth, int nChns, int imageWidth, int imageHeight, cv::Mat_<float> &P);
 
-	void bbTopLeft2PyramidRowColumn(int *r, int *c, BoundingBox bb, int modelHt, int modelWd, int ith_scale, int stride);
+	void bbTopLeft2PyramidRowColumn(int *r, int *c, BoundingBox& bb, int modelHt, int modelWd, int ith_scale, int stride);
 	BB_Array nonMaximalSuppressionSmart(BB_Array bbs, double meanHeight, double stdHeight);
 
 	BB_Array candidateRegions;

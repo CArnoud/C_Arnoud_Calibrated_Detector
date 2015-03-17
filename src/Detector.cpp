@@ -808,19 +808,35 @@ inline void getChild(float *chns1, uint32 *cids, uint32 *fids, float *thrs, uint
   k0=k+=k0*2; k+=offset;
 }
 
+/*
 BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array& bbox_candidates, std::vector<float*>& scales_chns, int *imageHeigths, int *imageWidths, int shrink, 
+											int modelHt, int modelWd, int stride, float cascThr, float *thrs, float *hs, std::vector<uint32*>& scales_cids, 
+											uint32 *fids, uint32 *child, int nTreeNodes, int nTrees, int treeDepth, int nChns, int imageWidth, int imageHeight, 
+											cv::Mat_<float> &P) */
+BB_Array Detector::applyCalibratedDetectorToFrame(std::vector<Info>& pyramid, BB_Array& bbox_candidates, int shrink, 
 											int modelHt, int modelWd, int stride, float cascThr, float *thrs, float *hs, std::vector<uint32*>& scales_cids, 
 											uint32 *fids, uint32 *child, int nTreeNodes, int nTrees, int treeDepth, int nChns, int imageWidth, int imageHeight, 
 											cv::Mat_<float> &P)
 {
 	BB_Array result;
 
+	std::vector<float*> scales_chns(opts.pPyramid.computedScales, NULL);
+	for (int j=0; j < opts.pPyramid.computedScales; j++) 
+	{
+		int height = pyramid[j].image.rows;
+		int width = pyramid[j].image.cols;
+
+		int channels = opts.pPyramid.pChns.pColor.nChannels + opts.pPyramid.pChns.pGradMag.nChannels + opts.pPyramid.pChns.pGradHist.nChannels;
+		float* chns = (float*)malloc(height*width*channels*sizeof(float));
+		features2floatArray(pyramid[j], chns, height, width, opts.pPyramid.pChns.pColor.nChannels, opts.pPyramid.pChns.pGradMag.nChannels, opts.pPyramid.pChns.pGradHist.nChannels);
+		scales_chns[j] = chns;
+	}
+
 	for (int i = 0; i < bbox_candidates.size(); ++i) {
-		// see which scale is best suited to the candidate
 		int ith_scale = bbox_candidates[i].scale;
 		
-		int height = imageHeigths[ith_scale];                                                              
-		int width = imageWidths[ith_scale];
+		int height = pyramid[ith_scale].image.rows;                                                             
+		int width = pyramid[ith_scale].image.cols;  
 
 		// r and c are defined by the candidate itself
 		int r, c;
@@ -884,11 +900,16 @@ BB_Array Detector::applyCalibratedDetectorToFrame(BB_Array& bbox_candidates, std
 	
 	}
 
+	//free the memory used to pre-allocate indexes
+	for (int i=0; i < opts.pPyramid.computedScales; i++) {
+		free(scales_chns[i]);
+	}
+
 	return result;
 }
 
 // copies the Dóllar detection
-BB_Array Detector::applyDetectorToFrame(std::vector<Info> pyramid, int shrink, int modelHt, int modelWd, int stride, float cascThr, float *thrs, float *hs, 
+BB_Array Detector::applyDetectorToFrame(std::vector<Info>& pyramid, int shrink, int modelHt, int modelWd, int stride, float cascThr, float *thrs, float *hs, 
 										uint32 *fids, uint32 *child, int nTreeNodes, int nTrees, int treeDepth, int nChns)
 {
 	BB_Array result;
@@ -1127,6 +1148,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 				generateCandidatesDone = true;
 			}
 
+			/*
 			// pre-compute the way we access the features for each scale (needs to be done for every frame, since images are different)
 			std::vector<float*> scales_chns(opts.pPyramid.computedScales, NULL);
 			int imageHeights[opts.pPyramid.computedScales];
@@ -1141,9 +1163,12 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 				features2floatArray(framePyramid[j], chns, imageHeights[j], imageWidths[j], opts.pPyramid.pChns.pColor.nChannels, opts.pPyramid.pChns.pGradMag.nChannels, opts.pPyramid.pChns.pGradHist.nChannels);
 				scales_chns[j] = chns;
 			}
+			*/
 
 			// aplies classifier to all candidate bounding boxes
- 			frameDetections = applyCalibratedDetectorToFrame(bbox_candidates, scales_chns, imageHeights, imageWidths, shrink, modelHt, modelWd, stride, cascThr, 
+ 			//frameDetections = applyCalibratedDetectorToFrame(bbox_candidates, scales_chns, imageHeights, imageWidths, shrink, modelHt, modelWd, stride, cascThr, 
+ 			//				thrs, hs, scales_cids, fids, child, nTreeNodes, nTrees, treeDepth, nChns, image.cols, image.rows, *(config.projectionMatrix));
+			frameDetections = applyCalibratedDetectorToFrame(framePyramid, bbox_candidates, shrink, modelHt, modelWd, stride, cascThr, 
  							thrs, hs, scales_cids, fids, child, nTreeNodes, nTrees, treeDepth, nChns, image.cols, image.rows, *(config.projectionMatrix));
 		
  			if (config.candidateGeneration == SPARSE)
@@ -1167,8 +1192,11 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 
  				frameDetections.clear();
 
- 				frameDetections = applyCalibratedDetectorToFrame(denseCandidates, scales_chns, imageHeights, imageWidths, shrink, modelHt, modelWd, stride, cascThr, 
+ 				frameDetections = applyCalibratedDetectorToFrame(framePyramid, denseCandidates, shrink, modelHt, modelWd, stride, cascThr, 
  							thrs, hs, scales_cids, fids, child, nTreeNodes, nTrees, treeDepth, nChns, image.cols, image.rows, *(config.projectionMatrix));
+
+ 				//frameDetections = applyCalibratedDetectorToFrame(denseCandidates, scales_chns, imageHeights, imageWidths, shrink, modelHt, modelWd, stride, cascThr, 
+ 				//			thrs, hs, scales_cids, fids, child, nTreeNodes, nTrees, treeDepth, nChns, image.cols, image.rows, *(config.projectionMatrix));
  				
  				//remove dense regions where there was no detection
  				removeCandidateRegions(frameDetections, denseCandidates);
@@ -1176,8 +1204,8 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
  			} // */
 
 			// free the memory used to pre-allocate indexes
-			for (int i=0; i < opts.pPyramid.computedScales; i++) 
-				free(scales_chns[i]);
+			//for (int i=0; i < opts.pPyramid.computedScales; i++) 
+			//	free(scales_chns[i]);
 		}
 		else
 		{

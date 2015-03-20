@@ -33,28 +33,8 @@ int main(int argc, char *argv[])
 		
 		cv::Mat image = cv::imread(settings.dataSetDirectory + '/' + imageNames[0]);
 
-		/*
-		BB_Array testBoxes;
-		testBoxes.push_back(BoundingBox(871, 400, 100, 218));
-		testBoxes.push_back(BoundingBox(0, 0, 41, 100));
-		testBoxes.push_back(BoundingBox(1000, 0, 41, 100));
-		testBoxes.push_back(BoundingBox(1800, 0, 41, 100));
-		testBoxes.push_back(BoundingBox(0, 800, 41, 100));
-		for (int i=0; i < testBoxes.size(); i++)
-		{
-			testBoxes[i].plot(image, cv::Scalar(0,255,0));
-			double height = findWorldHeight(testBoxes[i].topLeftPoint.x, testBoxes[i].topLeftPoint.y+testBoxes[i].height, testBoxes[i].topLeftPoint.y, (*settings.projectionMatrix), (*settings.homographyMatrix));
-			std::cout << "BB" << i+1 << " World Height: " << height << std::endl;
-		}
-		imshow("test", image);
-		cv::waitKey();
-		// */
-		
 		// apply the detection on all images
 		d.acfDetect(imageNames, settings.dataSetDirectory, settings.firstFrame, settings.lastFrame);
-
-		//std::cout << "before printing final times\n";
-		//std::cin.get();
 
 		clock_t end = clock();
 		double elapsed_secs = double(end - start) / CLOCKS_PER_SEC;
@@ -62,9 +42,6 @@ int main(int argc, char *argv[])
 		std::cout << "Time elapsed calculating features: " << d.opts.pPyramid.totalTimeForRealScales << std::endl;
 		std::cout << "Time elapsed approximating features: " << d.opts.pPyramid.totalTimeForApproxScales << std::endl;
 		std::cout << "Time elapsed during detections: " << d.timeSpentInDetection << std::endl;
-
-		//std::cout << "after printing final times\n";
-		//std::cin.get();
 
 		delete settings.projectionMatrix;
 		delete settings.homographyMatrix;

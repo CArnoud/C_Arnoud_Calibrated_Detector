@@ -81,7 +81,7 @@ private:
 											float minPedestrianHeight, float maxPedestrianHeight, cv::Mat_<float> &P, cv::Mat_<float> &H);
 
 	BB_Array generateSparseCandidates(int modelWidth, int modelHeight, float minPedestrianHeight, float maxPedestrianHeight, int imageWidth, 
-											int imageHeight, cv::Mat_<float> &P, cv::Mat_<float> &H);
+											int imageHeight, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H);
 
 	BB_Array generateCandidates(int imageHeight, int imageWidth, int shrink, cv::Mat_<float> &P, cv::Mat_<float> &H, float BBwidth2heightRatio, 
 									float meanHeight = 1800, float stdHeight = 100, float factorStdHeight = 2.0);
@@ -103,6 +103,9 @@ private:
 									float *hs, uint32 *fids, uint32 *child, int nTreeNodes, int nTrees, int treeDepth, int nChns);
 
 	void bbTopLeft2PyramidRowColumn(int *r, int *c, BoundingBox& bb, int modelHt, int modelWd, int ith_scale, int stride);
+
+	BB_Array ratedSuppression(BB_Array detections);
+
 	BB_Array nonMaximalSuppressionSmart(BB_Array bbs, double meanHeight, double stdHeight);
 
 	BB_Array candidateRegions;

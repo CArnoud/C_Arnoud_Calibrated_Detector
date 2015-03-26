@@ -89,18 +89,21 @@ std::vector<Info> Pyramid::computeFeaturePyramid(cv::Mat I, bool useCalibration)
 			resample(convertedImage, I1, I.rows, new_h, I.cols, new_w, colorChannels, 1.0);
 		}
 
+		/*
 		// if(s==.5 && (nApprox>0 || nPerOct==1)), I=I1;
 		if (scales[i] == 0.5 && (approximatedScales>0 || scalesPerOctave == 1))
 		{
 			free(convertedImage);
 			convertedImage = I1; 
 		}
+		*/
 
 		//computedChannels.insert(computedChannels.begin()+i, computeSingleScaleChannelFeatures(I1, new_h, new_w));
 		computedChannels[i] = computeSingleScaleChannelFeatures(I1, new_h, new_w);
 
 		if (I1 != convertedImage)
 			free(I1);
+
 		numberOfRealScales++;
 	}
 	free(convertedImage);

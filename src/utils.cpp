@@ -889,8 +889,6 @@ double findLastNecessaryScaleInAPoint(int u, int v, int imageHeight, int boundin
 
   lastScale = (double)boundingBoxImageHeight/curBBimageHeight;
 
-  //std::cout << "With curBBimageHeight=" << curBBimageHeight << " and curBBworldHeight=" << curBBworldHeight << ", lastScale=" << lastScale << std::endl;
-
   return lastScale;
 }
 

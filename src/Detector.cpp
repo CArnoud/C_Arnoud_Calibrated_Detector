@@ -844,7 +844,7 @@ BB_Array Detector::applyCalibratedDetectorToFrame(std::vector<Info>& pyramid, BB
 	      }
 	    }
 
-	    //double hf = h*gaussianFunction(1800, 300, bbox_candidates[i].worldHeight);
+	    //double hf = h*gaussianFunction(1.8, 0.1, bbox_candidates[i].worldHeight);
 	    //if (hf>1.0)
 	    if(h>cascThr)
 	    {
@@ -1091,6 +1091,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 				cidsDone = true;
 			}
 
+
 			// the candidate patches are genereted only for the first frame, since we assume we have the same camera for the whole data set
  			if (!generateCandidatesDone)
  			{
@@ -1201,7 +1202,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 			else 
 			{ // full method
 				int averagePedestrianWorldHeight = (config.maxPedestrianWorldHeight+config.minPedestrianWorldHeight)/2;
-				detections[i-firstFrame] = nonMaximalSuppressionSmart(detections[i-firstFrame], averagePedestrianWorldHeight, 100);
+				detections[i-firstFrame] = nonMaximalSuppressionSmart(detections[i-firstFrame], averagePedestrianWorldHeight, averagePedestrianWorldHeight/5);
 			}
 		}
 		else
@@ -1211,9 +1212,8 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		if (config.displayDetections)
 		{
 			showDetections(I, detections[i-firstFrame], "detections after suppression", config.showScore);
-			//printDetections(detections[i], i);
 			cv::waitKey(500);
-		}		
+		}	
 		
 		// saves image with embedded detections
 		if (config.saveFrames) {
@@ -1236,8 +1236,6 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
   				txtFile << detections[i-firstFrame][j].toString(i);
   				//txtFile << detections[i-firstFrame][j].height << " " << detections[i-firstFrame][j].score << std::endl;
 		}
-
-		//std::cout << "after save text\n";
 		
 		// clear memory occupied by the pyramid
 		for (int j=0; j < opts.pPyramid.computedScales; j++)
@@ -1253,7 +1251,13 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		// prints the total time spent working in the current frame
 		clock_t frameEnd = clock();
 		double elapsed_secs = double(frameEnd - frameStart) / CLOCKS_PER_SEC;
-		std::cout << "Frame " << i-firstFrame+1 << " of " << numberOfFrames << " was processed in " << elapsed_secs << " seconds.\n"; 
+		if (config.useCalibration && config.candidateGeneration == SPARSE)
+		{
+			std::cout << "Frame " << i-firstFrame+1 << " of " << numberOfFrames << " was processed in " << elapsed_secs << " seconds "; 
+			std::cout << "(" << bbox_candidates.size() + denseCandidates.size() << " candidates).\n";
+		}
+		else
+			std::cout << "Frame " << i-firstFrame+1 << " of " << numberOfFrames << " was processed in " << elapsed_secs << " seconds.\n"; 
 	}
 
 	if (config.useCalibration)
@@ -1305,6 +1309,9 @@ BB_Array Detector::ratedSuppression(BB_Array detections)
 				{
 					overlap = iw * ih;
 					double u = detections[i].height*detections[i].width + detections[j].height*detections[j].width-overlap;
+					//u = detections[i].height*detections[i].width;
+					//if (detections[i].height*detections[i].width > detections[j].height*detections[j].width)
+					//	u = detections[j].height*detections[j].width;
 					overlap = overlap/u;
 				}
 

@@ -1191,6 +1191,18 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		cv::waitKey();
 		// debug */
 
+		/*
+		// debug: dispĺays the image pyramid for the current frame
+		for (int s=0; s < framePyramid.size(); s++)
+		{
+			cv::imshow("Color Channel", framePyramid[s].image);
+			cv::imshow("GradMag Channel", framePyramid[s].gradientMagnitude);
+			cv::imshow("GradHist Channel", framePyramid[s].gradientHistogram[0]);
+			cv::waitKey();
+		}
+		cv::destroyAllWindows();
+		// debug */
+
 		// decides which type of non-maximal suppression is used
 		if (config.useCalibration)
 		{

@@ -41,8 +41,8 @@ std::vector<Info> Pyramid::computeFeaturePyramid(cv::Mat I, bool useCalibration)
 		pad[i] = round(pad[i]/pChns.shrink)*pChns.shrink;
 
 	// p.minDs=max(p.minDs,shrink*4);
-	minImgSize[0] = std::max(minImgSize[0], pChns.shrink);
-	minImgSize[1] = std::max(minImgSize[1], pChns.shrink);
+	minImgSize[0] = std::max(minImgSize[0], pChns.shrink*4);
+	minImgSize[1] = std::max(minImgSize[1], pChns.shrink*4);
 
 	// if(p.nApprox<0), p.nApprox=p.nPerOct-1; end
 	if (approximatedScales < 0)
@@ -124,7 +124,7 @@ std::vector<Info> Pyramid::computeFeaturePyramid(cv::Mat I, bool useCalibration)
 			double ratio[3];
 			int iR = 0;
 
-			// real scale changes in i=5 and i=13 to iR=8 and iR=16  
+			// selects the computed scales that will be the base for the current approximated scale
 			for (int j=0; j < numberOfRealScales-1; j++)
 			{
 				if (i > floor((j*(approximatedScales+1)+(j+1)*(approximatedScales+1))/2))

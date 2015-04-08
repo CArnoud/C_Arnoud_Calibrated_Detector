@@ -9,18 +9,16 @@ Created by Charles Arnoud, under the mentorship of Cláudio Rosito Jüng and wit
 Current Status  
 ======================  
   
-Detection working and it is faster than the original Matlab version, although results seem to be slightly worse.   
-Calibrated detection and feature pyramid online, new candidate generation method is done.  
+Detection working and it is faster than the original Matlab version.   
+Calibrated detection and feature pyramid online, new candidate generation method is providing good results.  
   
   
 To Do List:  
 ======================  
   
-Current Total: 2    
+Current Total: 1    
   
 Project:  
 &nbsp;&nbsp;&nbsp;&nbsp;Test possible uses for the OpenMP library  
-  
-Calibrated Detection:  
-&nbsp;&nbsp;&nbsp;&nbsp;Improve the rule for calculating overlap between bounding boxes    
+     
       

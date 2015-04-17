@@ -49,6 +49,14 @@ void BoundingBox::plot (cv::Mat &frame, cv::Scalar color, bool showScore)
 	}
 }
 
+void BoundingBox::resize (float resizeFactor)
+{
+	topLeftPoint.x = topLeftPoint.x * resizeFactor;
+	topLeftPoint.y = topLeftPoint.y * resizeFactor;
+	height = height * resizeFactor;
+	width = width * resizeFactor;
+}
+
 std::string BoundingBox::toString (int frameIndex)
 {
 	std::ostringstream result;
@@ -59,6 +67,7 @@ std::string BoundingBox::toString (int frameIndex)
 	return result.str();
 }
 
+/*
 cv::Point2i  BoundingBox::get_bottomRightPoint() {
 
 	cv::Point2i br;
@@ -68,3 +77,4 @@ cv::Point2i  BoundingBox::get_bottomRightPoint() {
 	return br;
 
 }
+*/

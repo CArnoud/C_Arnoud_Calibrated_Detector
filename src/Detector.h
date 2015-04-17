@@ -14,10 +14,11 @@ struct Config
 {
 	float resizeImage;
 	std::string detectorFileName;
+	std::string groundTruthFileName;
 	std::string dataSetDirectory;
 	int firstFrame, lastFrame;
 
-	bool displayDetections, saveFrames, saveDetectionsInText, useCalibration, showScore; 
+	bool displayDetections, saveFrames, saveDetectionsInText, useCalibration, showScore, useGroundTruth; 
 	std::string outputFolder;
 	int candidateGeneration;
 

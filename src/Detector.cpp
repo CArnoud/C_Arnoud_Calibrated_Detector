@@ -13,6 +13,7 @@ Config::Config(std::string config_file) :
 	useCalibration(false),
 	saveDetectionsInText(false),
 	showScore(false),
+	useGroundTruth(false),
 	supressionThreshold(0.0),
 	maxPedestrianWorldHeight(2000.0),
 	minPedestrianWorldHeight(1400.0)
@@ -28,6 +29,7 @@ Config::Config(std::string config_file) :
 			else if (token == "firstFrame") in_file >> firstFrame;
 			else if (token == "lastFrame") in_file >> lastFrame;
 			else if (token == "detectorFileName") in_file >> detectorFileName;
+			else if (token == "groundTruthFileName") in_file >> groundTruthFileName;
 			else if (token == "dataSetDirectory") in_file >> dataSetDirectory;
 			else if (token == "candidateGeneration") 
 			{
@@ -57,6 +59,11 @@ Config::Config(std::string config_file) :
 				std::string sbool;
 				in_file >> sbool;
 				showScore = (sbool == "true");
+			}
+			else if (token == "useGroundTruth") {
+				std::string sbool;
+				in_file >> sbool;
+				useGroundTruth = (sbool == "true");
 			}
 			else if (token == "outputFolder") in_file >> outputFolder;
 			else if (token == "supressionThreshold") in_file >> supressionThreshold;
@@ -106,7 +113,7 @@ Config::Config(std::string config_file) :
 		in_file.close();
 	}
 	else
-		std::cout << "Configuration file named " << config_file << " was not found.\n"; 
+		std::cout << " # Configuration file named " << config_file << " was not found.\n"; 
 }
 
 // i dont know if its gonna be needed but this is start
@@ -171,6 +178,49 @@ void Detector::showDetections(cv::Mat I, BB_Array detections, cv::String windowN
 		detections[j].plot(img, cv::Scalar(0,255,0), showScore);
 
 	cv::imshow(windowName, img);
+}
+
+BB_Array_Array readGroundTruth(std::string fileName, float resize)
+{
+	BB_Array_Array groundTruth;
+	std::ifstream in_file;
+	in_file.open(fileName.c_str());
+
+	if (in_file.is_open())
+	{
+		std::string token;
+		while (in_file >> token && token != "</dataset>")
+		{
+			BB_Array frameBBs, resizedBBs;
+			while (in_file >> token && token != "</frame>") {
+				if (token == "<box>") 
+				{
+					float height, width, xCenter, yCenter;
+					while(token != "</box>")
+					{
+						in_file >> token;
+						if (token == "<height>")
+							in_file >> height;						
+						if (token == "<width>")
+							in_file >> width;
+						if (token == "<xCenter>")
+							in_file >> xCenter;
+						if (token == "<yCenter>")
+							in_file >> yCenter;
+					}
+					BoundingBox newBB(xCenter-width/2, yCenter-height/2, width, height);
+					newBB.resize(resize);
+					frameBBs.push_back(newBB);
+				}
+			}
+
+			groundTruth.push_back(frameBBs);
+		}
+	}
+	else
+		std::cout << " # Ground Truth file named " << fileName << " was not found!\n";
+
+	return groundTruth;
 }
 
 void printDetections(BB_Array detections, int frameIndex)
@@ -1032,6 +1082,10 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 	BB_Array denseCandidates;
 	std::vector<uint32*> scales_cids;
 
+	BB_Array_Array groundTruthDetections;
+	if (config.useGroundTruth)
+		groundTruthDetections = readGroundTruth(config.groundTruthFileName, config.resizeImage);
+ 
 	for (int i = firstFrame; i < firstFrame + numberOfFrames; i++)
 	{
 		clock_t frameStart = clock();
@@ -1236,6 +1290,10 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 			for (int j = 0; j < candidateRegions.size(); j++)
 				candidateRegions[j].plot(image, cv::Scalar(255,0,0), false);
 			*/
+
+			if (config.useGroundTruth)
+				for (int j = 0; j < groundTruthDetections[i-firstFrame].size(); j++)
+					groundTruthDetections[i-firstFrame][j].plot(image, cv::Scalar(255,0,0), false);
 
 			std::string outputfilename = config.outputFolder + '/' + imageNames[i];
 			cv::imwrite(outputfilename, image);

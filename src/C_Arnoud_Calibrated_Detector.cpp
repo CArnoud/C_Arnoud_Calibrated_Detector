@@ -24,16 +24,13 @@ int main(int argc, char *argv[])
 		// gets names for all the files inside the data set folder
 		std::vector<std::string> imageNames = getDataSetFileNames(settings.dataSetDirectory);
 
+		// adjusts values of firstFrame and lastFrame to avoid errors
 		if (settings.firstFrame > imageNames.size())
 			settings.firstFrame = 0;
-
 		if (settings.lastFrame < settings.firstFrame)
 			settings.lastFrame = imageNames.size();
 
-		
-		cv::Mat image = cv::imread(settings.dataSetDirectory + '/' + imageNames[0]);
-
-		// apply the detection on all images
+		// applies the detection on all images
 		d.acfDetect(imageNames, settings.dataSetDirectory, settings.firstFrame, settings.lastFrame);
 
 		clock_t end = clock();

@@ -9,9 +9,10 @@ public:
 	BoundingBox();
 	BoundingBox(int topLeftPointX, int topLeftPointY, int w, int h);
 	BoundingBox(int topLeftPointX, int topLeftPointY, int w, int h, int s, float wHeight);
-	cv::Point2i  get_bottomRightPoint();
+	//cv::Point2i  get_bottomRightPoint();
 	void plot (cv::Mat &frame, cv::Scalar color, bool showScore);
 	std::string toString (int frameIndex);
+	void resize (float resizeFactor);
 
 	// this was added to be able to sort BB_Array objects
 	bool operator< (const BoundingBox &other) const 

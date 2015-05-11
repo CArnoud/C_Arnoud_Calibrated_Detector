@@ -30,6 +30,62 @@ int main(int argc, char *argv[])
 		if (settings.lastFrame < settings.firstFrame)
 			settings.lastFrame = imageNames.size();
 
+		/*
+		// debug
+		std::ifstream in_file;
+		in_file.open("../datasets/PETS09_View001_S2_L1_000to794.avi.detection.modified.xml");
+
+		if (in_file.is_open())
+		{
+			std::string token;
+			BB_Array_Array groundTruth;
+			while (in_file >> token && token != "</dataset>")
+			{
+				BB_Array frame1BBs, resizedBBs;
+				while (in_file >> token && token != "</frame>") {
+					if (token == "<box>") 
+					{
+						float height, width, x, y;
+						while(token != "</box>")
+						{
+							in_file >> token;
+							if (token == "<height>")
+								in_file >> height;						
+							if (token == "<width>")
+								in_file >> width;
+							if (token == "<x>")
+								in_file >> x;
+							if (token == "<y>")
+								in_file >> y;
+						}
+						BoundingBox newBB(x, y, width, height);
+						frame1BBs.push_back(newBB);
+						newBB.resize(settings.resizeImage);
+						resizedBBs.push_back(newBB);
+					}
+				}
+
+				groundTruth.push_back(frame1BBs);
+
+				cv::Mat image = cv::imread(settings.dataSetDirectory + '/' + imageNames[groundTruth.size()-1]);
+				cv::Mat resImage;
+				cv::resize(image, resImage, cv::Size(), settings.resizeImage, settings.resizeImage);
+				
+				for (int i=0; i < frame1BBs.size(); i++)
+				{
+					frame1BBs[i].plot(image, cv::Scalar(0,255,0), false);
+					resizedBBs[i].plot(resImage, cv::Scalar(0,255,0), false);
+				}
+
+				cv::imshow("testing ground truth", image);
+				cv::imshow("testing resized ground truth", resImage);
+				cv::waitKey();
+			}
+		}
+		else
+			std::cout << "Cant find ground Truth\n";
+		// debug */
+
 		// applies the detection on all images
 		d.acfDetect(imageNames, settings.dataSetDirectory, settings.firstFrame, settings.lastFrame);
 

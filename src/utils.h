@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <typeinfo> // for sse rgbConvert functions
 #include <dirent.h>
+#include <numeric>
 #include "BoundingBox.h"
 
 #include "Info.h"

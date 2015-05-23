@@ -192,7 +192,7 @@ BB_Array_Array readGroundTruth(std::string fileName, float resize)
 		std::string token;
 		while (in_file >> token && token != "</dataset>")
 		{
-			BB_Array frameBBs, resizedBBs;
+			BB_Array frameBBs;
 			while (in_file >> token && token != "</frame>") {
 				if (token == "<box>") 
 				{
@@ -213,6 +213,56 @@ BB_Array_Array readGroundTruth(std::string fileName, float resize)
 					newBB.resize(resize);
 					frameBBs.push_back(newBB);
 				}
+			}
+
+			groundTruth.push_back(frameBBs);
+		}
+	}
+	else
+		std::cout << " # Ground Truth file named " << fileName << " was not found!\n";
+
+	return groundTruth;
+}
+
+BB_Array_Array readGroundTruthTopFile(std::string fileName, float resize)
+{ //frameNumber, headValid, bodyValid, headLeft, headTop, headRight, headBottom, bodyLeft, bodyTop, bodyRight, bodyBottom
+	BB_Array_Array groundTruth;
+	std::ifstream infile;
+	infile.open(fileName.c_str());
+
+	if (infile.is_open())
+	{
+		int frame, returnPlace = 0;
+		while(infile >> frame)
+		{
+			infile.seekg(returnPlace);
+			infile >> frame;
+			int newFrame = frame;
+			BB_Array frameBBs;
+
+			while (newFrame == frame)
+			{
+
+				std::string notUsed;
+				float topLeftX, topLeftY, bottomRightX, bottomRightY;
+				infile >> notUsed; 		// headValid
+				infile >> notUsed; 		// bodyValid
+				infile >> notUsed; 		// headLeft
+				infile >> topLeftY; 	// headTop
+				infile >> notUsed; 		// headRight
+				infile >> notUsed; 		// headBottom
+				infile >> topLeftX;		// bodyLeft
+				infile >> notUsed; 		// bodyTop
+				infile >> bottomRightX;	// bodyRight
+				infile >> bottomRightY;	// bodyBottom
+
+				BoundingBox newBB(topLeftX, topLeftY, bottomRightX-topLeftX, bottomRightY-topLeftY);
+				newBB.resize(resize);
+				frameBBs.push_back(newBB);
+
+				returnPlace = infile.tellg();
+				if (!(infile >> newFrame))
+					break;
 			}
 
 			groundTruth.push_back(frameBBs);
@@ -813,6 +863,60 @@ BoundingBox Detector::pyramidRowColumn2BoundingBox(int r, int c,  int modelHt, i
 	return bb;
 }
 
+double calculateOverlap(BoundingBox bb1, BoundingBox bb2)
+{
+	double overlap = 0.0;
+	double xei, xej, xmin, xsMax, iw;
+	double yei, yej, ymin, ysMax, ih;
+	xei = bb1.topLeftPoint.x + bb1.width;
+	xej = bb2.topLeftPoint.x + bb2.width;
+	xmin = xej;			
+	if (xei < xej)
+		xmin = xei;
+	xsMax = bb1.topLeftPoint.x;
+	if (bb2.topLeftPoint.x > bb1.topLeftPoint.x)
+		xsMax = bb2.topLeftPoint.x;
+	iw = xmin - xsMax;
+	yei = bb1.topLeftPoint.y + bb1.height;
+	yej = bb2.topLeftPoint.y + bb2.height;
+	ymin = yej;			
+	if (yei < yej)
+		ymin = yei;
+	ysMax = bb1.topLeftPoint.y;
+	if (bb2.topLeftPoint.y > bb1.topLeftPoint.y)
+		ysMax = bb2.topLeftPoint.y;
+	ih = ymin - ysMax;
+	if (iw  > 0 && ih > 0)
+	{
+		overlap = iw * ih;
+		double u = bb1.height*bb1.width + bb2.height*bb2.width-overlap;
+		overlap = overlap/u;
+	}
+	return overlap;
+}
+
+int findFramesCoveredPedestrians(BB_Array groundTruth, BB_Array frameDetections)
+{
+	int coveredPedestrians = 0;
+	
+	for (int i=0; i < groundTruth.size(); i++)
+	{
+		bool found=false;
+		int j = 0;
+		while (!found && j < frameDetections.size())
+		{
+			if (calculateOverlap(groundTruth[i],frameDetections[j]) >= 0.5)
+			{
+				coveredPedestrians++;
+				found=true;
+			}
+			j++;
+		}
+	}
+	
+	return coveredPedestrians;
+}
+
 // this procedure was just copied verbatim
 inline void getChild(float *chns1, uint32 *cids, uint32 *fids, float *thrs, uint32 offset, uint32 &k0, uint32 &k)
 {
@@ -1085,7 +1189,8 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 
 	BB_Array_Array groundTruthDetections;
 	if (config.useGroundTruth)
-		groundTruthDetections = readGroundTruth(config.groundTruthFileName, config.resizeImage);
+		//groundTruthDetections = readGroundTruth(config.groundTruthFileName, config.resizeImage);
+		groundTruthDetections = readGroundTruthTopFile(config.groundTruthFileName, config.resizeImage);
 
 	std::vector<int> numberOfCandidates; 
  
@@ -1271,7 +1376,7 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 			// aplies classifier to all image patches
 			frameDetections = applyDetectorToFrame(framePyramid, shrink, modelHt, modelWd, stride, cascThr, thrs, hs, fids, child, nTreeNodes, nTrees, treeDepth, nChns);		
 		}
-		
+
 		// saves the detections
 		detections[i-firstFrame] = frameDetections;
 		frameDetections.clear(); //doesn't seem to make a difference
@@ -1330,6 +1435,11 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 		}
 		else
 			detections[i-firstFrame] = nonMaximalSuppression(detections[i-firstFrame]);
+
+		//std::cout << "Total: " << groundTruthDetections[i].size() << std::endl;
+		//std::cout << "Covered: " << findFramesCoveredPedestrians(groundTruthDetections[i],detections[i-firstFrame]) << std::endl;
+
+		std::cout << "detections: " << detections[i-firstFrame].size() << std::endl;
 		
 		// shows detections after suppression
 		if (config.displayDetections)
@@ -1394,6 +1504,28 @@ void Detector::acfDetect(std::vector<std::string> imageNames, std::string dataSe
 
 		double candidatesPerFrame = std::accumulate(numberOfCandidates.begin(), numberOfCandidates.end(), 0.0)/numberOfCandidates.size();
 		std::cout << "candidatesPerFrame=" << candidatesPerFrame << std::endl;
+	}
+
+	if (config.useGroundTruth)
+	{
+		int coveredPedestriansInDataSet=0;
+		int totalPedestrians=0;
+		int totalDetections=0;
+		int totalFalsePositives;
+		double coverageRatio, falsePositivesPerFrame;
+		
+		for(int i=0; i < detections.size(); i++)
+		{
+			coveredPedestriansInDataSet = coveredPedestriansInDataSet + findFramesCoveredPedestrians(groundTruthDetections[firstFrame+i],detections[i]);
+			totalPedestrians = totalPedestrians + groundTruthDetections[firstFrame+i].size();
+			totalDetections = totalDetections + detections[i].size();
+		}
+		
+		totalFalsePositives = totalDetections - coveredPedestriansInDataSet;
+		coverageRatio = (double)coveredPedestriansInDataSet / totalPedestrians;
+		falsePositivesPerFrame = (double)totalFalsePositives / detections.size();
+
+		std::cout << "\nCoverage: " << coverageRatio << "\nfalsePositivesPerFrame: " << falsePositivesPerFrame << std::endl;
 	}
 
 	if (config.saveDetectionsInText)
